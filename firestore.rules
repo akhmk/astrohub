@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional, url format)
+    //   - role: string (required, ['admin', 'user'])
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: courses
+    // Document ID: {courseId}
+    // Fields:
+    //   - title: string (required)
+    //   - instructor: string (required)
+    //   - duration: string
+    //   - students: string
+    //   - rating: number
+    //   - image: string (url)
+    //   - category: string
+    //   - level: string
+    //
+    // Collection: posts
+    // Document ID: {postId}
+    // Fields:
+    //   - authorUid: string (required)
+    //   - authorName: string
+    //   - authorAvatar: string
+    //   - title: string (required)
+    //   - content: string (required)
+    //   - code: string
+    //   - likes: number
+    //   - commentsCount: number
+    //   - shares: number
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "akhmk08@gmail.com");
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'role', 'firstName', 'lastName']) &&
+               data.uid == userId &&
+               isValidEmail(data.email) &&
+               data.role in ['admin', 'user'] &&
+               data.firstName is string && data.firstName.size() > 0 &&
+               data.lastName is string && data.lastName.size() > 0 &&
+               (data.role == 'admin' ? isAdmin() : true);
+      }
+
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.role == resource.data.role; // Prevent self-promotion
+      allow delete: if isAdmin();
+    }
+
+    // Courses Collection
+    match /courses/{courseId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    // Posts Collection
+    match /posts/{postId} {
+      function isValidPost(data) {
+        return data.keys().hasAll(['authorUid', 'title', 'content', 'createdAt']) &&
+               data.authorUid == request.auth.uid &&
+               data.title is string && data.title.size() < 200 &&
+               data.content is string && data.content.size() < 5000;
+      }
+
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidPost(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.authorUid) || isAdmin()) && isValidPost(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.authorUid) || isAdmin());
+    }
+
+    // Clubs Collection
+    match /clubs/{clubId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Blog Collection
+    match /blog/{blogId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
