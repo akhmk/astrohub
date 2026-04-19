@@ -57,7 +57,7 @@ export default function Auth({ onBack }: { onBack: () => void }) {
           className="liquid-glass p-8 md:p-12 rounded-[2.5rem] border border-white/10"
         >
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-heading italic tracking-tighter mb-2">
+            <h1 className="text-4xl font-heading tracking-tighter mb-2">
               {mode === 'login' ? 'Welcome Back' : 'Create Account'}
             </h1>
             <p className="text-white/40 font-body text-sm">

@@ -1,7 +1,8 @@
-import { ArrowUpRight, SignOut } from "@phosphor-icons/react";
+import { ArrowUpRight, SignOut, Globe } from "@phosphor-icons/react";
 import { ViewState } from "../App";
 import { User } from "firebase/auth";
 import { UserProfile } from "../hooks/useAuth";
+import { useLanguage } from "../context/LanguageContext";
 
 interface NavbarProps {
   onNavigate: (view: ViewState) => void;
@@ -11,6 +12,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onNavigate, user, profile, onLogout }: NavbarProps) {
+  const { language, setLanguage, t } = useLanguage();
+
   return (
     <nav className="fixed top-4 left-0 right-0 z-50 px-8 lg:px-16 py-3 flex items-center justify-between">
       {/* Left: Logo */}
@@ -21,13 +24,15 @@ export default function Navbar({ onNavigate, user, profile, onLogout }: NavbarPr
       </div>
 
       {/* Center: Links */}
-      <div className="hidden md:flex items-center liquid-glass rounded-full px-1.5 py-1">
+      <div className="hidden lg:flex items-center liquid-glass rounded-full px-1.5 py-1">
         {[
-          { label: "Main Page", view: "home" },
-          { label: "Courses", view: "courses" },
-          { label: "Forum", view: "forum" },
-          { label: "Clubs", view: "clubs" },
-          { label: "Blog", view: "blog" },
+          { label: t.nav.home, view: "home" },
+          { label: t.nav.courses, view: "courses" },
+          { label: t.nav.blog, view: "blog" },
+          { label: t.nav.clubs, view: "clubs" },
+          { label: t.nav.forum, view: "forum" },
+          { label: t.nav.roadmaps, view: "roadmaps" },
+          { label: "Labs", view: "labs" },
         ].map((item) => (
           <button
             key={item.label}
@@ -39,8 +44,17 @@ export default function Navbar({ onNavigate, user, profile, onLogout }: NavbarPr
         ))}
       </div>
 
-      {/* Right: Auth */}
+      {/* Right: Auth & Language */}
       <div className="flex items-center gap-4">
+        {/* Language Switcher */}
+        <button
+          onClick={() => setLanguage(language === 'en' ? 'ru' : 'en')}
+          className="flex items-center gap-2 px-3 py-2 rounded-full liquid-glass text-xs font-bold text-white hover:bg-white/10 transition-all"
+        >
+          <Globe size={16} />
+          {language.toUpperCase()}
+        </button>
+
         {user ? (
           <div className="flex items-center gap-3 liquid-glass pl-1.5 pr-4 py-1.5 rounded-full">
             <img 
@@ -62,7 +76,7 @@ export default function Navbar({ onNavigate, user, profile, onLogout }: NavbarPr
             onClick={() => onNavigate("auth")}
             className="bg-white text-black rounded-full px-6 py-2.5 text-sm font-bold flex items-center gap-2 hover:bg-white/90 transition-all active:scale-95"
           >
-            Join <ArrowUpRight size={18} weight="bold" />
+            {t.nav.join} <ArrowUpRight size={18} weight="bold" />
           </button>
         )}
       </div>

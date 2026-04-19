@@ -1,6 +1,14 @@
 import CosmicBackground from "./CosmicBackground";
+import { ViewState } from "../App";
+import { useLanguage } from "../context/LanguageContext";
 
-export default function CtaFooter() {
+interface CtaFooterProps {
+  onNavigate: (view: ViewState) => void;
+}
+
+export default function CtaFooter({ onNavigate }: CtaFooterProps) {
+  const { t } = useLanguage();
+
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center pt-32 overflow-hidden bg-black">
       {/* Custom Cosmic Background */}
@@ -18,26 +26,26 @@ export default function CtaFooter() {
 
       {/* Content */}
       <div className="relative z-10 px-8 flex flex-col items-center text-center max-w-4xl mx-auto">
-        <h2 className="text-5xl md:text-6xl lg:text-8xl font-heading italic text-white tracking-tighter leading-[0.85] mb-8">
-          The universe is waiting.
+        <h2 className="text-5xl md:text-6xl lg:text-8xl font-heading text-white tracking-tighter leading-[0.85] mb-8">
+          {t.cta.title}
         </h2>
         <p className="text-white/70 font-body font-light text-lg md:text-xl max-w-2xl mb-12">
-          Join Cosmos Academy today and start your journey into the stars. Expert-led courses, interactive labs, and a global community.
+          {t.cta.subtitle}
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-6">
-          <button className="liquid-glass-strong rounded-full px-8 py-4 text-base font-medium hover:scale-105 transition-transform">
-            Join the Academy
-          </button>
-          <button className="bg-white text-black rounded-full px-8 py-4 text-base font-medium hover:bg-white/90 transition-colors">
-            Browse Courses
+          <button 
+            onClick={() => onNavigate('auth')}
+            className="liquid-glass-strong rounded-full px-8 py-4 text-base font-medium hover:scale-105 transition-transform"
+          >
+            {t.cta.cta}
           </button>
         </div>
 
         {/* Footer */}
         <footer className="mt-48 w-full pt-8 pb-12 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-white/40 text-xs font-body">
-            © 2026 Cosmos Academy. All rights reserved.
+            {t.cta.rights}
           </div>
           <div className="flex items-center gap-8">
             {["Privacy", "Terms", "Contact"].map((link) => (

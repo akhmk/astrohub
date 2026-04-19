@@ -1,10 +1,18 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight, Play } from "@phosphor-icons/react";
+import { ArrowUpRight } from "@phosphor-icons/react";
 import BlurText from "./BlurText";
+import { ViewState } from "../App";
+import { useLanguage } from "../context/LanguageContext";
 
-export default function Hero() {
+interface HeroProps {
+  onNavigate: (view: ViewState) => void;
+}
+
+export default function Hero({ onNavigate }: HeroProps) {
+  const { t } = useLanguage();
+
   return (
-    <section className="relative overflow-visible h-[1000px] flex flex-col items-center justify-start text-center">
+    <section className="relative overflow-visible h-[800px] flex flex-col items-center justify-start text-center">
       {/* Background Image (Space) */}
       <div 
         className="absolute inset-0 z-0 pointer-events-none bg-cover bg-center"
@@ -24,24 +32,10 @@ export default function Hero() {
       />
 
       {/* Content */}
-      <div className="relative z-10 pt-[150px] px-8 flex flex-col items-center max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="liquid-glass rounded-full px-1 py-1 flex items-center gap-3 mb-8"
-        >
-          <span className="bg-white text-black rounded-full px-3 py-1 text-xs font-semibold">
-            Enroll Now
-          </span>
-          <span className="text-xs font-medium text-white pr-3">
-            Spring Semester 2026: Astrophysics & Orbital Mechanics
-          </span>
-        </motion.div>
-
+      <div className="relative z-10 pt-[200px] px-8 flex flex-col items-center max-w-5xl mx-auto">
         <BlurText
-          text="Master the Secrets of the Universe"
-          className="text-6xl md:text-7xl lg:text-[5.5rem] font-heading italic text-foreground leading-[0.8] max-w-4xl tracking-[-4px] mb-8 justify-center"
+          text={t.hero.title}
+          className="text-6xl md:text-7xl lg:text-[5.5rem] font-heading text-foreground leading-[0.8] max-w-4xl tracking-[-4px] mb-8 justify-center"
           delay={100}
         />
 
@@ -51,7 +45,7 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="text-sm md:text-base text-white/80 font-body font-light leading-tight max-w-lg mb-10"
         >
-          World-class education in astronomy and aerospace engineering. Learn from industry experts and join a global community of space enthusiasts.
+          {t.hero.subtitle}
         </motion.p>
 
         <motion.div
@@ -60,36 +54,14 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 1.1 }}
           className="flex flex-wrap items-center justify-center gap-6"
         >
-          <button className="liquid-glass-strong rounded-full px-6 py-3 flex items-center gap-2 text-sm font-medium hover:scale-105 transition-transform">
-            Explore Courses
+          <button 
+            onClick={() => onNavigate('auth')}
+            className="liquid-glass-strong rounded-full px-8 py-4 flex items-center gap-2 text-sm font-medium hover:scale-105 transition-transform"
+          >
+            {t.hero.cta}
             <ArrowUpRight size={16} weight="bold" />
           </button>
-          <button className="flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white transition-colors">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <Play size={14} weight="fill" className="text-white" />
-            </div>
-            Watch Intro
-          </button>
         </motion.div>
-
-        {/* Partners Bar */}
-        <div className="mt-auto pb-8 pt-32 w-full">
-          <div className="flex flex-col items-center gap-8">
-            <div className="liquid-glass rounded-full px-4 py-1.5 text-[10px] uppercase tracking-widest text-white/40 font-medium">
-              Academic Partners & Affiliations
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-12 md:gap-16">
-              {["MIT", "Stanford", "Caltech", "NASA", "CERN"].map((partner) => (
-                <span
-                  key={partner}
-                  className="text-2xl md:text-3xl font-heading italic text-white/30 hover:text-white/60 transition-colors cursor-default"
-                >
-                  {partner}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
