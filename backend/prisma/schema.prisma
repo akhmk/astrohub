@@ -1,0 +1,242 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Users
+// ============================================
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique @map("firebase_uid")
+  email       String   @unique
+  username    String?  @unique
+  firstName   String?  @map("first_name")
+  lastName    String?  @map("last_name")
+  photoURL    String?  @map("photo_url")
+  role        Role     @default(USER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  forumPosts    ForumPost[]
+  forumComments ForumComment[]
+  ownedClubs    Club[]           @relation("ClubOwner")
+  memberships   ClubMembership[]
+  clubPosts     ClubPost[]
+  blogPosts     BlogPost[]
+  roadmapProgress RoadmapProgress[]
+  labSubmissions  LabSubmission[]
+
+  @@map("users")
+}
+
+// ============================================
+// Forum
+// ============================================
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  code      String?
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments ForumComment[]
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("forum_posts")
+}
+
+model ForumComment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([authorId])
+  @@map("forum_comments")
+}
+
+// ============================================
+// Clubs
+// ============================================
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  imageURL    String?  @map("image_url")
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner       User             @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships ClubMembership[]
+  posts       ClubPost[]
+
+  @@index([ownerId])
+  @@map("clubs")
+}
+
+model ClubMembership {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  clubId   String   @map("club_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@map("club_memberships")
+}
+
+model ClubPost {
+  id        String   @id @default(cuid())
+  content   String
+  clubId    String   @map("club_id")
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([clubId])
+  @@map("club_posts")
+}
+
+// ============================================
+// Blog
+// ============================================
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  excerpt   String?
+  coverURL  String?  @map("cover_url")
+  published Boolean  @default(false)
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([published, createdAt(sort: Desc)])
+  @@index([slug])
+  @@map("blog_posts")
+}
+
+// ============================================
+// Roadmaps
+// ============================================
+
+model Roadmap {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  steps       Json     @default("[]")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  progress RoadmapProgress[]
+
+  @@map("roadmaps")
+}
+
+model RoadmapProgress {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  roadmapId      String   @map("roadmap_id")
+  completedSteps Json     @default("[]")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roadmap Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roadmapId])
+  @@map("roadmap_progress")
+}
+
+// ============================================
+// Labs
+// ============================================
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum SubmissionStatus {
+  PENDING
+  REVIEWED
+  APPROVED
+  REJECTED
+}
+
+model Lab {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  content     String?
+  difficulty  Difficulty @default(BEGINNER)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  submissions LabSubmission[]
+
+  @@map("labs")
+}
+
+model LabSubmission {
+  id        String           @id @default(cuid())
+  labId     String           @map("lab_id")
+  userId    String           @map("user_id")
+  content   String
+  status    SubmissionStatus @default(PENDING)
+  feedback  String?
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  lab  Lab  @relation(fields: [labId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([labId, userId])
+  @@map("lab_submissions")
+}
