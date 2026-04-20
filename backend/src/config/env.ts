@@ -1,10 +1,11 @@
+import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
   // Server
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  API_URL: z.string().url().default("http://localhost:4000"),
+  API_URL: z.string().default("http://localhost:4000"),
 
   // Database
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -12,8 +13,8 @@ const envSchema = z.object({
   // CORS
   CORS_ORIGIN: z.string().default("http://localhost:3000,http://localhost:5173"),
 
-  // Firebase
-  FIREBASE_SERVICE_ACCOUNT_KEY: z.string().min(1, "FIREBASE_SERVICE_ACCOUNT_KEY is required"),
+  // Firebase — only the project ID is needed for token verification
+  FIREBASE_PROJECT_ID: z.string().min(1, "FIREBASE_PROJECT_ID is required"),
 
   // Admin
   ADMIN_EMAILS: z.string().default(""),

@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { firebaseAuth } from "../config/firebase.js";
+import { verifyFirebaseToken } from "../config/firebase.js";
 import { env } from "../config/env.js";
 import prisma from "../utils/prisma.js";
 import type { User, Role } from "@prisma/client";
@@ -34,7 +34,7 @@ export async function authMiddleware(
 
   try {
     // 1. Verify the Firebase ID token
-    const decoded = await firebaseAuth.verifyIdToken(token);
+    const decoded = await verifyFirebaseToken(token);
 
     // 2. Find or create the user in our database
     let user = await prisma.user.findUnique({
@@ -69,7 +69,7 @@ export async function authMiddleware(
   } catch (error: any) {
     request.log.warn({ error: error.message }, "Auth token verification failed");
 
-    if (error.code === "auth/id-token-expired") {
+    if (error.code === "ERR_JWT_EXPIRED") {
       return reply.status(401).send({
         error: "Unauthorized",
         message: "Token has expired. Please refresh your token.",
@@ -96,7 +96,7 @@ export async function optionalAuthMiddleware(
 
   try {
     const token = authHeader.slice(7);
-    const decoded = await firebaseAuth.verifyIdToken(token);
+    const decoded = await verifyFirebaseToken(token);
 
     const user = await prisma.user.findUnique({
       where: { firebaseUid: decoded.uid },
