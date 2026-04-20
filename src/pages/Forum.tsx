@@ -1,29 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, 
-  Home, 
-  Bookmark, 
-  MoreHorizontal,
-  Bell, 
-  Settings, 
-  Plus, 
-  Image as ImageIcon, 
-  Send,
-  TrendingUp,
-  Award,
-  ChevronRight,
-  Heart,
-  MessageCircle,
-  Share2,
-  CheckCircle2,
-  User,
-  Lock,
-  Eye,
-  BellRing
+  Search, Home, Bookmark, MoreHorizontal, Bell, Settings, Plus, 
+  Image as ImageIcon, Send, TrendingUp, Award, ChevronRight,
+  Heart, MessageCircle, Share2, User, Lock, Eye, BellRing, Loader2
 } from 'lucide-react';
 import CosmicBackground from '../components/CosmicBackground';
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from '../hooks/useAuth';
+import { api, ForumPost, ForumComment } from '../lib/api';
 
 const NAV_ITEMS = [
   { icon: Home, label: 'My Feed' },
@@ -35,48 +20,99 @@ const SECONDARY_NAV = [
   { icon: Settings, label: 'Settings' },
 ];
 
-const POSTS = [
-  {
-    id: 1,
-    author: 'tmhao2005',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100',
-    time: '2 hours ago',
-    title: 'TypeScript useful advanced types',
-    content: 'As the title says, here are all the useful types that I\'m using every day or create new types on top of them. I thought it might be handy for some people so I just share here and this will be updated moving forward:',
-    code: `type ReduceItems<Arr extends ReadonlyArray<any>, Result extends any[]> = [] => Arr extends []
-  ? Result
-  : Arr extends [infer H]
-  ? H extends {items: ReadonlyArray<MenuItem>}
-    ? [...Result, ...H["items"]]
-    : never
-  : Arr extends readonly [infer H, ...infer Tail]
-  ? Tail extends ReadonlyArray<any>
-    ? H extends {items: ReadonlyArray<MenuItem>}
-      ? ReduceItems<Tail, [...Result, ...H["items"]]>
-      : never
-    : never
-  : never;`,
-    likes: 124,
-    comments: 42,
-    shares: 12
-  }
-];
-
 export default function Forum() {
   const { t } = useLanguage();
+  const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('My Feed');
-  const [likedPosts, setLikedPosts] = useState<number[]>([]);
+  const [likedPosts, setLikedPosts] = useState<string[]>([]);
+  const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
+  const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<(ForumPost & { comments: ForumComment[] }) | null>(null);
+  const [commentText, setCommentText] = useState('');
 
-  const toggleLike = (id: number) => {
+  // Fetch posts from API
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const loadPosts = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getForumPosts();
+      setPosts(res.data);
+    } catch (err) {
+      console.error('Failed to load posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleLike = (id: string) => {
     setLikedPosts(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
   };
 
-  const handlePost = () => {
-    if (!postContent.trim()) return;
-    alert('Post shared successfully!');
-    setPostContent('');
+  const handlePost = async () => {
+    if (!postContent.trim() || !postTitle.trim() || !user) return;
+    setPosting(true);
+    try {
+      await api.createForumPost({ title: postTitle, content: postContent });
+      setPostTitle('');
+      setPostContent('');
+      await loadPosts();
+    } catch (err: any) {
+      alert(`Failed to post: ${err.message}`);
+    } finally {
+      setPosting(false);
+    }
   };
+
+  const handleOpenPost = async (postId: string) => {
+    try {
+      const full = await api.getForumPost(postId);
+      setSelectedPost(full);
+    } catch (err) {
+      console.error('Failed to load post:', err);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !selectedPost || !user) return;
+    try {
+      await api.addComment(selectedPost.id, commentText);
+      setCommentText('');
+      const updated = await api.getForumPost(selectedPost.id);
+      setSelectedPost(updated);
+      await loadPosts();
+    } catch (err: any) {
+      alert(`Failed to comment: ${err.message}`);
+    }
+  };
+
+  const handleDeletePost = async (id: string) => {
+    if (!confirm('Delete this post?')) return;
+    try {
+      await api.deleteForumPost(id);
+      setSelectedPost(null);
+      await loadPosts();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err.message}`);
+    }
+  };
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const getAuthorName = (author: { firstName: string | null; lastName: string | null }) =>
+    `${author.firstName || ''} ${author.lastName || ''}`.trim() || 'Anonymous';
 
   const notifications = [
     { id: 1, type: 'like', user: 'Sarah K.', content: 'liked your post about Quantum Mechanics', time: '5m ago', icon: Heart, color: 'text-red-400' },
@@ -86,7 +122,6 @@ export default function Forum() {
 
   return (
     <div className="min-h-screen bg-black text-white pt-24 pb-20 px-8 lg:px-16 relative">
-      {/* Space Background */}
       <CosmicBackground />
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[240px_1fr_300px] gap-8 relative z-10">
@@ -97,7 +132,7 @@ export default function Forum() {
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.label}
-                onClick={() => setActiveTab(item.label)}
+                onClick={() => { setActiveTab(item.label); setSelectedPost(null); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                   activeTab === item.label 
                     ? 'bg-white/10 text-white' 
@@ -118,7 +153,7 @@ export default function Forum() {
             {SECONDARY_NAV.map((item) => (
               <button
                 key={item.label}
-                onClick={() => setActiveTab(item.label)}
+                onClick={() => { setActiveTab(item.label); setSelectedPost(null); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                   activeTab === item.label 
                     ? 'bg-white/10 text-white' 
@@ -138,38 +173,93 @@ export default function Forum() {
             ))}
           </div>
 
-          <div className="mt-auto p-4 liquid-glass rounded-2xl flex items-center gap-3">
-            <img 
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100" 
-              alt="User" 
-              className="w-10 h-10 rounded-full border border-white/10"
-            />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">Robert J.</span>
-              <span className="text-[10px] text-white/40">Student</span>
+          {profile && (
+            <div className="mt-auto p-4 liquid-glass rounded-2xl flex items-center gap-3">
+              {profile.photoURL ? (
+                <img src={profile.photoURL} alt="User" className="w-10 h-10 rounded-full border border-white/10" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-white/10">
+                  <User size={20} className="text-blue-400" />
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{profile.firstName} {profile.lastName}</span>
+                <span className="text-[10px] text-white/40 capitalize">{profile.role}</span>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Main Content */}
         <main className="flex flex-col gap-8 relative">
-          {/* Coming Soon Overlay */}
-          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-            <div className="liquid-glass p-12 rounded-3xl border border-white/10 text-center backdrop-blur-md">
-              <div className="inline-block px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-4">
-                Coming Soon
-              </div>
-              <h2 className="text-3xl font-heading font-bold mb-4">Community Hub</h2>
-              <p className="text-white/60 max-w-sm mx-auto text-sm">
-                We are preparing the launch of our global student network. 
-                Get ready to connect with space enthusiasts worldwide.
-              </p>
-            </div>
-          </div>
+          <AnimatePresence mode="wait">
+          {selectedPost ? (
+            /* Post Detail View */
+            <motion.div
+              key="detail"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col gap-6"
+            >
+              <button onClick={() => setSelectedPost(null)} className="text-white/40 hover:text-white text-sm self-start">
+                ← Back to Feed
+              </button>
+              <article className="liquid-glass rounded-3xl p-8 border border-white/5">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    {selectedPost.author.photoURL ? (
+                      <img src={selectedPost.author.photoURL} className="w-12 h-12 rounded-full border border-white/10" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center"><User size={20} className="text-blue-400" /></div>
+                    )}
+                    <div>
+                      <span className="font-bold">{getAuthorName(selectedPost.author)}</span>
+                      <div className="text-xs text-white/40">{formatTime(selectedPost.createdAt)}</div>
+                    </div>
+                  </div>
+                  {profile && (profile.uid === selectedPost.author.id || profile.role === 'admin') && (
+                    <button onClick={() => handleDeletePost(selectedPost.id)} className="text-red-400/60 hover:text-red-400 text-xs">Delete</button>
+                  )}
+                </div>
+                <h2 className="text-2xl font-heading mb-4">{selectedPost.title}</h2>
+                <p className="text-white/70 font-body mb-6 leading-relaxed whitespace-pre-wrap">{selectedPost.content}</p>
+                {selectedPost.code && (
+                  <div className="bg-black/40 rounded-2xl p-6 font-mono text-sm text-blue-300 mb-8 border border-white/5 overflow-x-auto">
+                    <pre><code>{selectedPost.code}</code></pre>
+                  </div>
+                )}
+              </article>
 
-          <div className="opacity-20 blur-sm grayscale pointer-events-none flex flex-col gap-6">
-            <AnimatePresence mode="wait">
-            {activeTab === 'My Feed' || activeTab === 'Bookmarks' ? (
+              {/* Comments */}
+              <div className="flex flex-col gap-4">
+                <h3 className="text-lg font-heading">Comments ({selectedPost.comments?.length || 0})</h3>
+                {selectedPost.comments?.map(c => (
+                  <div key={c.id} className="liquid-glass rounded-2xl p-4 border border-white/5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><User size={14} /></div>
+                      <span className="text-sm font-bold">{getAuthorName(c.author)}</span>
+                      <span className="text-xs text-white/30">{formatTime(c.createdAt)}</span>
+                    </div>
+                    <p className="text-white/70 text-sm pl-11">{c.content}</p>
+                  </div>
+                ))}
+                {user && (
+                  <div className="flex gap-3 items-end">
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-white/30 resize-none min-h-[60px]"
+                    />
+                    <button onClick={handleAddComment} className="bg-white text-black rounded-full px-4 py-2 text-sm font-bold hover:bg-white/90">
+                      <Send size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ) : (activeTab === 'My Feed' || activeTab === 'Bookmarks') ? (
               <motion.div
                 key="feed"
                 initial={{ opacity: 0, y: 10 }}
@@ -187,100 +277,115 @@ export default function Forum() {
                   />
                 </div>
 
-                {/* New Post Box */}
-                <div className="liquid-glass rounded-3xl p-6 border border-white/5">
-                  <textarea 
-                    placeholder={t.forum.postPlaceholder} 
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    className="w-full bg-transparent border-none resize-none text-lg font-body focus:outline-none mb-4 min-h-[100px]"
-                  />
-                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                    <div className="flex items-center gap-4">
-                      <button className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-                        <Plus size={20} />
-                      </button>
-                      <button className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-                        <ImageIcon size={20} />
-                      </button>
-                      <button className="text-xs font-medium text-white/40 hover:text-white transition-colors">
-                        More
-                      </button>
-                    </div>
-                    <button 
-                      onClick={handlePost}
-                      className="bg-white text-black rounded-full px-6 py-2 text-sm font-bold flex items-center gap-2 hover:bg-white/90 transition-colors active:scale-95"
-                    >
-                      {t.forum.postButton} <Send size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Feed Filters */}
-                <div className="flex items-center gap-6 px-2">
-                  <button className="text-sm font-bold text-white border-b-2 border-blue-500 pb-2">Following</button>
-                  <button className="text-sm font-medium text-white/40 hover:text-white pb-2 transition-colors">Featured</button>
-                  <button className="text-sm font-medium text-white/40 hover:text-white pb-2 transition-colors">Rising</button>
-                </div>
-
-                {/* Posts */}
-                <div className="flex flex-col gap-6">
-                  {POSTS.map((post) => (
-                    <motion.article 
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="liquid-glass rounded-3xl p-8 border border-white/5"
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                          <img src={post.avatar} alt={post.author} className="w-12 h-12 rounded-full border border-white/10" />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold">{post.author}</span>
-                              <Award size={14} className="text-yellow-500" />
-                            </div>
-                            <span className="text-xs text-white/40">{post.time}</span>
-                          </div>
-                        </div>
-                        <button className="p-2 text-white/40 hover:text-white rounded-lg transition-all">
-                          <MoreHorizontal size={20} />
+                {/* New Post Box — only show for logged-in users */}
+                {user && (
+                  <div className="liquid-glass rounded-3xl p-6 border border-white/5">
+                    <input
+                      type="text"
+                      placeholder="Post title..."
+                      value={postTitle}
+                      onChange={(e) => setPostTitle(e.target.value)}
+                      className="w-full bg-transparent border-none text-xl font-heading focus:outline-none mb-3"
+                    />
+                    <textarea 
+                      placeholder={t.forum.postPlaceholder} 
+                      value={postContent}
+                      onChange={(e) => setPostContent(e.target.value)}
+                      className="w-full bg-transparent border-none resize-none text-lg font-body focus:outline-none mb-4 min-h-[80px]"
+                    />
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-4">
+                        <button className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                          <Plus size={20} />
+                        </button>
+                        <button className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                          <ImageIcon size={20} />
                         </button>
                       </div>
+                      <button 
+                        onClick={handlePost}
+                        disabled={posting || !postTitle.trim() || !postContent.trim()}
+                        className="bg-white text-black rounded-full px-6 py-2 text-sm font-bold flex items-center gap-2 hover:bg-white/90 transition-colors active:scale-95 disabled:opacity-50"
+                      >
+                        {posting ? <Loader2 size={16} className="animate-spin" /> : <>{t.forum.postButton} <Send size={16} /></>}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                      <h2 className="text-2xl font-heading mb-4">{post.title}</h2>
-                      <p className="text-white/70 font-body mb-6 leading-relaxed">
-                        {post.content}
-                      </p>
-
-                      {post.code && (
-                        <div className="bg-black/40 rounded-2xl p-6 font-mono text-sm text-blue-300 mb-8 border border-white/5 overflow-x-auto">
-                          <pre><code>{post.code}</code></pre>
+                {/* Loading State */}
+                {loading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 size={32} className="animate-spin text-white/40" />
+                  </div>
+                ) : posts.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-white/40 text-lg mb-2">No posts yet</p>
+                    <p className="text-white/30 text-sm">{user ? 'Be the first to share something!' : 'Sign in to create a post.'}</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-6">
+                    {posts.map((post) => (
+                      <motion.article 
+                        key={post.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="liquid-glass rounded-3xl p-8 border border-white/5 cursor-pointer hover:border-white/10 transition-all"
+                        onClick={() => handleOpenPost(post.id)}
+                      >
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center gap-4">
+                            {post.author.photoURL ? (
+                              <img src={post.author.photoURL} alt={getAuthorName(post.author)} className="w-12 h-12 rounded-full border border-white/10" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                <User size={20} className="text-blue-400" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{getAuthorName(post.author)}</span>
+                              </div>
+                              <span className="text-xs text-white/40">{formatTime(post.createdAt)}</span>
+                            </div>
+                          </div>
+                          <button className="p-2 text-white/40 hover:text-white rounded-lg transition-all" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal size={20} />
+                          </button>
                         </div>
-                      )}
 
-                      <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                        <div className="flex items-center gap-8">
-                          <button 
-                            onClick={() => toggleLike(post.id)}
-                            className={`flex items-center gap-2 transition-colors ${likedPosts.includes(post.id) ? 'text-red-400' : 'text-white/40 hover:text-red-400'}`}
-                          >
-                            <Heart size={20} fill={likedPosts.includes(post.id) ? 'currentColor' : 'none'} />
-                            <span className="text-sm font-medium">{post.likes + (likedPosts.includes(post.id) ? 1 : 0)}</span>
-                          </button>
-                          <button className="flex items-center gap-2 text-white/40 hover:text-blue-400 transition-colors">
-                            <MessageCircle size={20} />
-                            <span className="text-sm font-medium">{post.comments}</span>
-                          </button>
-                          <button className="flex items-center gap-2 text-white/40 hover:text-green-400 transition-colors">
-                            <Share2 size={20} />
-                            <span className="text-sm font-medium">{post.shares}</span>
-                          </button>
+                        <h2 className="text-2xl font-heading mb-4">{post.title}</h2>
+                        <p className="text-white/70 font-body mb-6 leading-relaxed line-clamp-3">
+                          {post.content}
+                        </p>
+
+                        {post.code && (
+                          <div className="bg-black/40 rounded-2xl p-6 font-mono text-sm text-blue-300 mb-8 border border-white/5 overflow-x-auto">
+                            <pre><code>{post.code}</code></pre>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                          <div className="flex items-center gap-8">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleLike(post.id); }}
+                              className={`flex items-center gap-2 transition-colors ${likedPosts.includes(post.id) ? 'text-red-400' : 'text-white/40 hover:text-red-400'}`}
+                            >
+                              <Heart size={20} fill={likedPosts.includes(post.id) ? 'currentColor' : 'none'} />
+                            </button>
+                            <button className="flex items-center gap-2 text-white/40 hover:text-blue-400 transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <MessageCircle size={20} />
+                              <span className="text-sm font-medium">{post._count.comments}</span>
+                            </button>
+                            <button className="flex items-center gap-2 text-white/40 hover:text-green-400 transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <Share2 size={20} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </motion.article>
-                  ))}
-                </div>
+                      </motion.article>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             ) : activeTab === 'Notifications' ? (
               <motion.div
@@ -317,7 +422,6 @@ export default function Forum() {
                 className="flex flex-col gap-8"
               >
                 <h2 className="text-3xl font-heading mb-4">{t.forum.settings}</h2>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     { icon: User, label: 'Account', desc: 'Manage your profile and email' },
@@ -336,32 +440,13 @@ export default function Forum() {
                     </button>
                   ))}
                 </div>
-
-                <div className="liquid-glass rounded-3xl p-8 border border-white/5">
-                  <h3 className="text-lg font-bold mb-6">Profile Information</h3>
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs text-white/40 font-medium">Display Name</label>
-                      <input type="text" defaultValue="Robert J." className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30" />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs text-white/40 font-medium">Bio</label>
-                      <textarea defaultValue="Space enthusiast and aspiring astrophysicist." className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 h-24 resize-none" />
-                    </div>
-                    <button className="bg-white text-black rounded-full px-8 py-3 text-sm font-bold hover:bg-white/90 transition-all mt-4">
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
-          </div>
         </main>
 
         {/* Right Sidebar */}
         <aside className="hidden lg:flex flex-col gap-8">
-          {/* Trending */}
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-heading flex items-center gap-2">
               <TrendingUp size={20} className="text-blue-400" />
@@ -371,7 +456,6 @@ export default function Forum() {
               {['#astrophysics', '#mars2026', '#spacex', '#quantum', '#telescope'].map((tag) => (
                 <button 
                   key={tag} 
-                  onClick={() => alert(`Searching for ${tag}`)}
                   className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-full text-xs text-white/60 hover:text-white transition-all active:scale-95"
                 >
                   {tag}
@@ -380,7 +464,6 @@ export default function Forum() {
             </div>
           </div>
 
-          {/* Official Channels */}
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-heading">{t.forum.official}</h3>
             <div className="flex flex-col gap-3">
@@ -391,7 +474,6 @@ export default function Forum() {
               ].map((channel) => (
                 <button 
                   key={channel.name} 
-                  onClick={() => alert(`Opening ${channel.name}`)}
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 transition-all group active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-3">
@@ -409,7 +491,6 @@ export default function Forum() {
             </div>
           </div>
         </aside>
-
       </div>
     </div>
   );

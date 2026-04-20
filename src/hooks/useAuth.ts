@@ -8,8 +8,8 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider, githubProvider } from '../firebase';
+import { auth, googleProvider, githubProvider } from '../firebase';
+import { api, ApiUser } from '../lib/api';
 
 export interface UserProfile {
   uid: string;
@@ -19,6 +19,18 @@ export interface UserProfile {
   photoURL: string;
   role: 'admin' | 'user';
   createdAt: any;
+}
+
+function apiUserToProfile(apiUser: ApiUser, firebaseUid: string): UserProfile {
+  return {
+    uid: firebaseUid,
+    email: apiUser.email,
+    firstName: apiUser.firstName || '',
+    lastName: apiUser.lastName || '',
+    photoURL: apiUser.photoURL || '',
+    role: apiUser.role === 'ADMIN' ? 'admin' : 'user',
+    createdAt: new Date(),
+  };
 }
 
 export function useAuth() {
@@ -31,27 +43,23 @@ export function useAuth() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
-        } else {
+        try {
+          // Sync with backend — the backend auto-creates the user on first request
+          const apiUser = await api.getMe();
+          setProfile(apiUserToProfile(apiUser, firebaseUser.uid));
+        } catch (err: any) {
+          console.error('Failed to sync user with backend:', err.message);
+          // Fallback to Firebase data if backend is unreachable
           const names = (firebaseUser.displayName || '').split(' ');
-          const firstName = names[0] || '';
-          const lastName = names.slice(1).join(' ') || '';
-
-          const newProfile: UserProfile = {
+          setProfile({
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
-            firstName,
-            lastName,
+            firstName: names[0] || '',
+            lastName: names.slice(1).join(' ') || '',
             photoURL: firebaseUser.photoURL || '',
             role: 'user',
-            createdAt: serverTimestamp(),
-          };
-          await setDoc(docRef, newProfile);
-          setProfile(newProfile);
+            createdAt: new Date(),
+          });
         }
       } else {
         setProfile(null);
@@ -71,19 +79,21 @@ export function useAuth() {
       const res = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(res.user, { displayName: `${firstName} ${lastName}` });
       
-      // Explicitly create profile with split names
-      const docRef = doc(db, 'users', res.user.uid);
-      const newProfile: UserProfile = {
-        uid: res.user.uid,
-        email: res.user.email || '',
-        firstName,
-        lastName,
-        photoURL: res.user.photoURL || '',
-        role: 'user',
-        createdAt: serverTimestamp(),
-      };
-      await setDoc(docRef, newProfile);
-      setProfile(newProfile);
+      // Backend will auto-create the user when we first call getMe (via auth middleware)
+      try {
+        const apiUser = await api.getMe();
+        setProfile(apiUserToProfile(apiUser, res.user.uid));
+      } catch {
+        setProfile({
+          uid: res.user.uid,
+          email: res.user.email || '',
+          firstName,
+          lastName,
+          photoURL: res.user.photoURL || '',
+          role: 'user',
+          createdAt: new Date(),
+        });
+      }
       
       return res.user;
     } catch (err: any) {
