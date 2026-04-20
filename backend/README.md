@@ -2,7 +2,7 @@
 
 Production-ready REST API for the AstroHub educational platform.
 
-**Tech Stack:** Node.js · TypeScript · Fastify · PostgreSQL · Prisma · Firebase Admin SDK
+**Tech Stack:** Node.js · TypeScript · Fastify · PostgreSQL · Prisma · Firebase Auth (JWT)
 
 ---
 
@@ -26,8 +26,7 @@ Production-ready REST API for the AstroHub educational platform.
 ### Prerequisites
 
 - **Node.js** 20+
-- **Docker** (for PostgreSQL) or a PostgreSQL instance
-- **Firebase service account key** ([how to get one](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments))
+- A **PostgreSQL** database (we use [Neon](https://neon.tech) — free forever)
 
 ### 1. Install dependencies
 
@@ -36,32 +35,26 @@ cd backend
 npm install
 ```
 
-### 2. Start PostgreSQL
-
-```bash
-docker-compose up -d
-```
-
-This starts a PostgreSQL 16 instance on port 5432.
-
-### 3. Configure environment
+### 2. Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` and fill in:
-- `DATABASE_URL` — already set for Docker: `postgresql://astrohub:astrohub_dev@localhost:5432/astrohub?schema=public`
-- `FIREBASE_SERVICE_ACCOUNT_KEY` — paste the full JSON from your Firebase service account key file (as one line)
-- `ADMIN_EMAILS` — comma-separated list of emails that should be admins
+- `DATABASE_URL` — your PostgreSQL connection string
+- `FIREBASE_PROJECT_ID` — your Firebase project ID (found in `firebase-applet-config.json`)
+- `ADMIN_EMAILS` — comma-separated list of admin emails
 
-### 4. Run database migrations
+> **No Firebase service account key needed!** We verify tokens using Google's public JWKs.
+
+### 3. Run database migrations
 
 ```bash
 npx prisma migrate dev --name init
 ```
 
-### 5. Start the server
+### 4. Start the server
 
 ```bash
 npm run dev
@@ -81,13 +74,12 @@ All API endpoints are under `/api/`.
 
 ### Health Check
 ```
-GET /health
-→ { status: "ok", timestamp, uptime, environment }
+GET /health → { status: "ok", timestamp, uptime, environment }
 ```
 
 ### Authentication
 
-All protected endpoints require a Firebase ID token in the header:
+All protected endpoints require a Firebase ID token:
 ```
 Authorization: Bearer <firebase-id-token>
 ```
@@ -153,22 +145,13 @@ GET    /api/labs/:id/submissions    # My submissions (auth)
 
 ### Pagination
 
-All list endpoints accept query params:
-```
-?page=1&limit=20
-```
+All list endpoints accept: `?page=1&limit=20`
 
-Response format:
+Response:
 ```json
 {
   "data": [...],
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 42,
-    "totalPages": 3,
-    "hasMore": true
-  }
+  "meta": { "page": 1, "limit": 20, "total": 42, "totalPages": 3, "hasMore": true }
 }
 ```
 
@@ -180,101 +163,64 @@ Response format:
 
 1. Create a new project on [Railway](https://railway.app)
 2. Add a **PostgreSQL** database
-3. Connect your GitHub repo
-4. Set the **Root Directory** to `backend`
-5. Add environment variables (from `.env.example`)
-6. Railway will auto-detect the Dockerfile
+3. Connect your GitHub repo, set **Root Directory** to `backend`
+4. Add env vars from `.env.example`
 
 ### Render
 
 1. Create a new **Web Service** on [Render](https://render.com)
-2. Connect your GitHub repo
-3. Set **Root Directory** to `backend`
-4. **Build Command:** `npm ci && npx prisma generate && npm run build`
-5. **Start Command:** `npx prisma migrate deploy && node dist/server.js`
-6. Add a **PostgreSQL** database and set `DATABASE_URL`
-7. Add remaining env vars
+2. Set **Root Directory** to `backend`
+3. **Build:** `npm ci && npx prisma generate && npm run build`
+4. **Start:** `npx prisma migrate deploy && node dist/server.js`
 
 ---
 
-## 🌐 Connecting a Custom Domain (Future)
+## 🌐 Custom Domain (Future)
 
-When you're ready to connect `api.astro-hub.org` to your backend:
+When ready to connect `api.astro-hub.org`:
 
-### Step 1: Add your domain to your host
-
-**On Railway:** Settings → Domains → Add Custom Domain → `api.astro-hub.org`
-
-**On Render:** Settings → Custom Domains → Add → `api.astro-hub.org`
-
-### Step 2: Update DNS
-
-Go to your domain registrar (e.g., Namecheap, Cloudflare) and add a **CNAME** record:
-
-| Type | Name | Value |
-|------|------|-------|
-| CNAME | `api` | `your-app.railway.app` (or `your-app.onrender.com`) |
-
-**What this does:** When someone visits `api.astro-hub.org`, the DNS tells their browser to go to your Railway/Render server.
-
-### Step 3: Update environment variables
-
-```env
-API_URL=https://api.astro-hub.org
-CORS_ORIGIN=https://astro-hub.org,https://www.astro-hub.org
-```
-
-### Step 4: Wait for SSL
-
-Both Railway and Render auto-provision free SSL certificates. It may take a few minutes.
-
-That's it! Your API is now live at `https://api.astro-hub.org` 🎉
+1. Add domain in Railway/Render settings
+2. Add DNS CNAME record: `api` → `your-app.railway.app`
+3. Update env vars:
+   ```
+   API_URL=https://api.astro-hub.org
+   CORS_ORIGIN=https://astro-hub.org
+   ```
+4. SSL is auto-provisioned. Done! 🎉
 
 ---
 
 ## 💾 Database Backup
 
-### Manual backup (pg_dump)
-
 ```bash
 # Export
-pg_dump -U astrohub -h localhost -d astrohub > backup_$(date +%Y%m%d).sql
+pg_dump $DATABASE_URL > backup.sql
 
 # Import
-psql -U astrohub -h localhost -d astrohub < backup_20260419.sql
+psql $DATABASE_URL < backup.sql
 ```
-
-### On Railway/Render
-
-Both platforms offer built-in database backups:
-- **Railway:** Automatic daily backups (Pro plan)
-- **Render:** Manual snapshots from the dashboard
-
-For automated backups, set up a cron job that runs `pg_dump` and uploads to cloud storage (S3, GCS).
 
 ---
 
-## 🛠️ Development Commands
+## 🛠️ Commands
 
 ```bash
-npm run dev        # Start dev server with hot reload
-npm run build      # Compile TypeScript
-npm run start      # Run production build
-npm run lint       # TypeScript type check
+npm run dev          # Dev server with hot reload
+npm run build        # Compile TypeScript
+npm run start        # Production server
+npm run lint         # Type check
 npm run db:generate  # Generate Prisma client
-npm run db:migrate   # Run migrations (dev)
-npm run db:studio    # Open Prisma Studio (DB GUI)
-npm run docker:up    # Start PostgreSQL
-npm run docker:down  # Stop PostgreSQL
+npm run db:migrate   # Run migrations
+npm run db:studio    # Database GUI
 ```
 
 ---
 
 ## 🔒 Security
 
-- **Firebase Auth** — token verification on every protected request
-- **Zod validation** — input validation on all endpoints
-- **Helmet** — security headers
-- **CORS** — env-based allowed origins
-- **Rate limiting** — 100 req/min default (configurable)
-- **Role-based access** — admin/user roles enforced at route level
+- **Firebase JWT verification** via Google's public keys
+- **Zod validation** on all inputs
+- **Helmet** security headers
+- **CORS** env-based origins
+- **Rate limiting** 100 req/min (configurable)
+- **Role-based access** admin/user
