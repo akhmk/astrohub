@@ -1,20 +1,53 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🚀 AstroHub
 
-# Run and deploy your AI Studio app
+**AstroHub** is a platform for students who are interested in space, physics, and technology.
+It helps users discover clubs, resources, and opportunities in their city — from telescopes to makerspaces and rocketry.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/cd4ef0c7-5a8d-49df-b976-aa3e3be8283c
+## About the Project
 
-## Run Locally
+AstroHub was created to solve a simple problem:
 
-**Prerequisites:**  Node.js
+> *"Where can I explore space and science in my city?"*
 
+We bring everything together in one place:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+* Astronomy clubs
+* STEM spaces (makerspaces)
+* Educational centers
+* Events and activities
+
+---
+
+## ⚙️ Features
+
+*  Search for science clubs and locations
+*  Category navigation (telescopes, rocketry, programming, etc.)
+*  Local recommendations (city-based discovery)
+*  Student-friendly interface
+*  Information about STEM opportunities
+
+---
+
+##  Tech Stack
+
+Frontend:
+
+* React (or Next.js)
+* Tailwind CSS
+
+Backend (planned):
+
+* Node.js / Express
+* PostgreSQL
+
+Other:
+
+* Location-based APIs
+* Domain integration (planned)
+
+##  Contributing
+
+Contributions are welcome!
+If you have ideas, suggestions, or want to improve AstroHub, feel free to fork the repo and submit a pull request.
