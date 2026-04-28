@@ -24,7 +24,7 @@ export default function Navbar({ onNavigate, user, profile, onLogout }: NavbarPr
       </div>
 
       {/* Center: Links */}
-      <div className="hidden lg:flex items-center liquid-glass rounded-full px-1.5 py-1">
+      <div className="hidden lg:flex items-center liquid-glass rounded-full px-1.5 py-1 absolute left-1/2 -translate-x-1/2">
         {[
           { label: t.nav.home, view: "home" },
           { label: t.nav.courses, view: "courses" },

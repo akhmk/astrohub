@@ -35,7 +35,7 @@ export class LabsService {
 
   async create(data: CreateLabInput) {
     return prisma.lab.create({
-      data,
+      data: data as any,
       select: labSelect,
     });
   }
@@ -60,7 +60,7 @@ export class LabsService {
   // Submissions
   async createSubmission(labId: string, userId: string, data: CreateSubmissionInput) {
     return prisma.labSubmission.create({
-      data: { ...data, labId, userId },
+      data: { ...data, lab: { connect: { id: labId } }, user: { connect: { id: userId } } } as any,
       select: {
         id: true,
         content: true,

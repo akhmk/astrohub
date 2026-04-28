@@ -8,7 +8,7 @@ import { api, Club } from '../lib/api';
 const CITIES = ["All Cities", "Pavlodar", "Almaty", "Astana", "Shymkent", "Atyrau"];
 
 export default function Clubs({ onBack }: { onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("All Cities");
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -40,9 +40,19 @@ export default function Clubs({ onBack }: { onBack: () => void }) {
       setNewClubName('');
       setNewClubDesc('');
       setShowCreate(false);
+      alert('Club created! It is awaiting admin approval.');
       await loadClubs();
     } catch (err: any) {
       alert(`Failed to create club: ${err.message}`);
+    }
+  };
+
+  const handleApproveClub = async (clubId: string) => {
+    try {
+      await api.approveClub(clubId);
+      await loadClubs();
+    } catch (err: any) {
+      alert(`Failed to approve: ${err.message}`);
     }
   };
 
@@ -51,6 +61,17 @@ export default function Clubs({ onBack }: { onBack: () => void }) {
     if (!user) return alert('Please sign in to join a club');
     try {
       await api.joinClub(clubId);
+      await loadClubs();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleLeaveClub = async (clubId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to leave this club?")) return;
+    try {
+      await api.leaveClub(clubId);
       await loadClubs();
     } catch (err: any) {
       alert(err.message);
@@ -66,6 +87,7 @@ export default function Clubs({ onBack }: { onBack: () => void }) {
       imageURL: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=800",
       createdAt: new Date().toISOString(),
       ownerId: '',
+      isApproved: true,
       _count: { memberships: 0, posts: 0 },
     },
   ];
@@ -216,12 +238,35 @@ export default function Clubs({ onBack }: { onBack: () => void }) {
                         <Users size={12} />
                         {club._count.memberships} Members
                       </div>
-                      <button
-                        onClick={(e) => handleJoinClub(club.id, e)}
-                        className="bg-white text-black rounded-full px-5 py-1.5 text-[10px] font-bold hover:bg-white/90 transition-colors"
-                      >
-                        Join Club
-                      </button>
+                      
+                      <div className="flex gap-2">
+                        {!club.isApproved && profile?.role === 'ADMIN' && (
+                          <button
+                            onClick={() => handleApproveClub(club.id)}
+                            className="bg-green-500/20 text-green-400 rounded-full px-4 py-1.5 text-[10px] font-bold hover:bg-green-500/30 transition-colors"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        
+                        {!club.isApproved && profile?.role !== 'ADMIN' ? (
+                          <span className="text-yellow-500 text-[10px] font-bold px-3 py-1.5">Pending Approval</span>
+                        ) : profile && club.memberships?.some(m => m.userId === profile.id) ? (
+                          <button
+                            onClick={(e) => handleLeaveClub(club.id, e)}
+                            className="bg-zinc-800 text-white rounded-full px-5 py-1.5 text-[10px] font-bold hover:bg-zinc-700 transition-colors"
+                          >
+                            Joined
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => handleJoinClub(club.id, e)}
+                            className="bg-white text-black rounded-full px-5 py-1.5 text-[10px] font-bold hover:bg-white/90 transition-colors"
+                          >
+                            Join Club
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </motion.div>

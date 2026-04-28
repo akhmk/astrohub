@@ -41,7 +41,7 @@ export class BlogService {
 
   async create(authorId: string, data: CreateBlogPostInput) {
     return prisma.blogPost.create({
-      data: { ...data, authorId },
+      data: { ...data, author: { connect: { id: authorId } } } as any,
       select: blogSelect,
     });
   }

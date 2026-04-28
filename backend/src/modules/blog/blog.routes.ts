@@ -11,8 +11,8 @@ export async function blogRoutes(app: FastifyInstance) {
   app.get("/", blogController.listPosts);
   app.get<SlugParams>("/:slug", { preHandler: [optionalAuthMiddleware] }, blogController.getPost);
 
-  // Admin only
-  app.post("/", { preHandler: [authMiddleware, roleGuard("ADMIN")] }, blogController.createPost);
-  app.patch<IdParams>("/:id", { preHandler: [authMiddleware, roleGuard("ADMIN")] }, blogController.updatePost);
+  // Admin/Teacher only
+  app.post("/", { preHandler: [authMiddleware, roleGuard("ADMIN", "TEACHER")] }, blogController.createPost);
+  app.patch<IdParams>("/:id", { preHandler: [authMiddleware, roleGuard("ADMIN", "TEACHER")] }, blogController.updatePost);
   app.delete<IdParams>("/:id", { preHandler: [authMiddleware, roleGuard("ADMIN")] }, blogController.deletePost);
 }

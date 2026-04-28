@@ -109,3 +109,23 @@ export async function optionalAuthMiddleware(
     // Silently ignore — user just won't be set
   }
 }
+
+/**
+ * Middleware factory to restrict access based on roles.
+ * Must be used AFTER authMiddleware.
+ */
+export function requireRole(allowedRoles: Role[]) {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.user) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+
+    if (!allowedRoles.includes(request.user.role)) {
+      request.log.warn({ userId: request.user.id, role: request.user.role }, "Access denied: insufficient role");
+      return reply.status(403).send({ 
+        error: "Forbidden", 
+        message: `This action requires one of the following roles: ${allowedRoles.join(", ")}` 
+      });
+    }
+  };
+}

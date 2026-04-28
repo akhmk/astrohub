@@ -3,24 +3,68 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, User, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import CosmicBackground from '../components/CosmicBackground';
 import { api, BlogPost } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Blog({ onBack }: { onBack: () => void }) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+
+  // Creation State
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newSlug, setNewSlug] = useState('');
+  const [newExcerpt, setNewExcerpt] = useState('');
+  const [newContent, setNewContent] = useState('');
+
+  const loadPosts = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getBlogPosts();
+      setPosts(res.data);
+    } catch (err) {
+      console.error('Failed to load blog posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.getBlogPosts();
-        setPosts(res.data);
-      } catch (err) {
-        console.error('Failed to load blog posts:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadPosts();
   }, []);
+
+  const handleCreatePost = async () => {
+    if (!newTitle || !newSlug || !newContent) return;
+    try {
+      await api.createBlogPost({
+        title: newTitle,
+        slug: newSlug,
+        excerpt: newExcerpt,
+        content: newContent,
+        published: true, // Auto publish for simplicity
+      });
+      setShowCreate(false);
+      setNewTitle('');
+      setNewSlug('');
+      setNewExcerpt('');
+      setNewContent('');
+      await loadPosts();
+    } catch (err: any) {
+      alert(`Failed to create post: ${err.message}`);
+    }
+  };
+
+  const handleDeletePost = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Delete this post?')) return;
+    try {
+      await api.deleteBlogPost(id);
+      await loadPosts();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   const handleOpenPost = async (slug: string) => {
     try {
@@ -72,14 +116,74 @@ export default function Blog({ onBack }: { onBack: () => void }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <div className="mb-16">
-                  <h1 className="text-5xl md:text-6xl font-heading tracking-tighter mb-4">
-                    Astrohub Blog
-                  </h1>
-                  <p className="text-white/60 font-body max-w-xl">
-                    Updates, announcements, and insights from the team behind the academy.
-                  </p>
+                <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
+                  <div>
+                    <h1 className="text-5xl md:text-6xl font-heading tracking-tighter mb-4">
+                      Astrohub Blog
+                    </h1>
+                    <p className="text-white/60 font-body max-w-xl">
+                      Updates, announcements, and insights from the team behind the academy.
+                    </p>
+                  </div>
+                  {(profile?.role === 'ADMIN' || profile?.role === 'TEACHER') && (
+                    <button
+                      onClick={() => setShowCreate(!showCreate)}
+                      className="bg-white text-black px-6 py-2 rounded-full font-bold text-sm"
+                    >
+                      New Post
+                    </button>
+                  )}
                 </div>
+
+                <AnimatePresence>
+                  {showCreate && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden mb-12"
+                    >
+                      <div className="liquid-glass rounded-3xl p-8 border border-white/10">
+                        <h2 className="text-2xl font-heading mb-6">Create New Post</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <input
+                            value={newTitle}
+                            onChange={(e) => {
+                              setNewTitle(e.target.value);
+                              setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
+                            }}
+                            placeholder="Title..."
+                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                          />
+                          <input
+                            value={newSlug}
+                            onChange={(e) => setNewSlug(e.target.value)}
+                            placeholder="URL Slug..."
+                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                          />
+                        </div>
+                        <input
+                          value={newExcerpt}
+                          onChange={(e) => setNewExcerpt(e.target.value)}
+                          placeholder="Short excerpt..."
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4"
+                        />
+                        <textarea
+                          value={newContent}
+                          onChange={(e) => setNewContent(e.target.value)}
+                          placeholder="Post Content (Markdown supported)..."
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 min-h-[200px] mb-6"
+                        />
+                        <button
+                          onClick={handleCreatePost}
+                          className="bg-blue-500 text-white px-8 py-3 rounded-full font-bold w-full md:w-auto hover:bg-blue-600 transition-colors"
+                        >
+                          Publish Post
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                   {displayPosts.map((post, i) => (
@@ -113,9 +217,19 @@ export default function Blog({ onBack }: { onBack: () => void }) {
                       <p className="text-white/50 font-body mb-8 leading-relaxed">
                         {post.excerpt || post.content?.slice(0, 200) + '...'}
                       </p>
-                      <button className="flex items-center gap-2 text-sm font-bold group-hover:gap-4 transition-all">
-                        Read Article <ArrowRight size={18} />
-                      </button>
+                      <div className="flex items-center justify-between">
+                        <button className="flex items-center gap-2 text-sm font-bold group-hover:gap-4 transition-all">
+                          Read Article <ArrowRight size={18} />
+                        </button>
+                        {(profile?.role === 'ADMIN' || profile?.role === 'TEACHER') && (
+                          <button
+                            onClick={(e) => handleDeletePost(post.id, e)}
+                            className="text-white/20 hover:text-red-400 transition-colors text-sm"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </motion.article>
                   ))}
                 </div>

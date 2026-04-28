@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Home, Bookmark, MoreHorizontal, Bell, Settings, Plus, 
   Image as ImageIcon, Send, TrendingUp, Award, ChevronRight,
-  Heart, MessageCircle, Share2, User, Lock, Eye, BellRing, Loader2
+  Heart, MessageCircle, Share2, User, Lock, Eye, BellRing, Loader2, ArrowLeft
 } from 'lucide-react';
 import CosmicBackground from '../components/CosmicBackground';
 import { useLanguage } from "../context/LanguageContext";
@@ -20,7 +20,11 @@ const SECONDARY_NAV = [
   { icon: Settings, label: 'Settings' },
 ];
 
-export default function Forum() {
+interface ForumProps {
+  onBack: () => void;
+}
+
+export default function Forum({ onBack }: ForumProps) {
   const { t } = useLanguage();
   const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('My Feed');
@@ -38,6 +42,13 @@ export default function Forum() {
     loadPosts();
   }, []);
 
+  useEffect(() => {
+    if (profile && posts.length > 0) {
+      const liked = posts.filter(p => p.favorites?.some(f => f.userId === profile.id)).map(p => p.id);
+      setLikedPosts(liked);
+    }
+  }, [profile, posts.length]);
+
   const loadPosts = async () => {
     setLoading(true);
     try {
@@ -50,8 +61,20 @@ export default function Forum() {
     }
   };
 
-  const toggleLike = (id: string) => {
-    setLikedPosts(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  const toggleLike = async (id: string) => {
+    if (!user) return alert('Please sign in to favorite posts');
+    try {
+      const { action } = await api.toggleFavorite(id);
+      if (action === 'added') {
+        setLikedPosts(prev => [...prev, id]);
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, _count: { ...p._count, favorites: p._count.favorites + 1 } } : p));
+      } else {
+        setLikedPosts(prev => prev.filter(p => p !== id));
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, _count: { ...p._count, favorites: Math.max(0, p._count.favorites - 1) } } : p));
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const handlePost = async () => {
@@ -124,10 +147,44 @@ export default function Forum() {
     <div className="min-h-screen bg-black text-white pt-24 pb-20 px-8 lg:px-16 relative">
       <CosmicBackground />
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[240px_1fr_300px] gap-8 relative z-10">
-        
-        {/* Left Sidebar */}
-        <aside className="hidden lg:flex flex-col gap-8">
+      <div className="max-w-7xl mx-auto relative z-10">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Home
+        </button>
+
+        <div className="flex items-center justify-between mb-12">
+          <div>
+            <h1 className="text-6xl md:text-8xl font-heading font-bold tracking-tighter mb-4">
+              Forum
+            </h1>
+            <p className="text-white/60 max-w-2xl text-lg font-body">
+              Connect with researchers, engineers, and students from around the globe.
+            </p>
+          </div>
+          <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-bold animate-pulse">
+            Coming Soon
+          </div>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="liquid-glass p-12 rounded-3xl border border-white/10 text-center backdrop-blur-md">
+              <h2 className="text-4xl font-heading font-bold mb-4">Under Construction</h2>
+              <p className="text-white/60 max-w-md mx-auto">
+                Our community team is building the ultimate platform for space enthusiasts.
+                Get ready for advanced discussions and collaboration tools.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_300px] gap-8 opacity-20 blur-sm grayscale pointer-events-none">
+            
+            {/* Left Sidebar */}
+            <aside className="hidden lg:flex flex-col gap-8">
           <div className="flex flex-col gap-2">
             {NAV_ITEMS.map((item) => (
               <button
@@ -372,6 +429,7 @@ export default function Forum() {
                               className={`flex items-center gap-2 transition-colors ${likedPosts.includes(post.id) ? 'text-red-400' : 'text-white/40 hover:text-red-400'}`}
                             >
                               <Heart size={20} fill={likedPosts.includes(post.id) ? 'currentColor' : 'none'} />
+                              <span className="text-sm font-medium">{post._count.favorites || 0}</span>
                             </button>
                             <button className="flex items-center gap-2 text-white/40 hover:text-blue-400 transition-colors" onClick={(e) => e.stopPropagation()}>
                               <MessageCircle size={20} />
@@ -490,7 +548,9 @@ export default function Forum() {
               ))}
             </div>
           </div>
-        </aside>
+            </aside>
+          </div>
+        </div>
       </div>
     </div>
   );

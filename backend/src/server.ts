@@ -70,6 +70,8 @@ app.get("/health", async () => ({
   environment: env.NODE_ENV,
 }));
 
+import { coursesRoutes } from "./modules/courses/courses.routes.js";
+
 // ============================================
 // API Routes
 // ============================================
@@ -80,6 +82,7 @@ app.register(clubsRoutes, { prefix: "/api/clubs" });
 app.register(blogRoutes, { prefix: "/api/blog" });
 app.register(roadmapsRoutes, { prefix: "/api/roadmaps" });
 app.register(labsRoutes, { prefix: "/api/labs" });
+app.register(coursesRoutes, { prefix: "/api/courses" });
 
 // ============================================
 // Start server

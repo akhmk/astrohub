@@ -18,6 +18,7 @@ import Roadmaps from "./pages/Roadmaps";
 import Labs from "./pages/Labs";
 import Learning from "./pages/Learning";
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import { useAuth } from "./hooks/useAuth";
 
 export type ViewState = "home" | "courses" | "forum" | "clubs" | "blog" | "roadmaps" | "labs" | "auth" | "learning";
@@ -40,19 +41,23 @@ export default function App() {
       )}
       <main>
         {view === "home" && (
-          <>
-            <Hero onNavigate={navigateTo} />
-            <div className="bg-black">
-              <StartSection onNavigate={navigateTo} />
-              <FeaturesChess onNavigate={navigateTo} />
-              <BentoGrid onNavigate={navigateTo} />
-              <CtaFooter onNavigate={navigateTo} />
-            </div>
-          </>
+          user ? (
+            <Dashboard user={user} profile={profile} onNavigate={navigateTo} />
+          ) : (
+            <>
+              <Hero onNavigate={navigateTo} />
+              <div className="bg-black">
+                <StartSection onNavigate={navigateTo} />
+                <FeaturesChess onNavigate={navigateTo} />
+                <BentoGrid onNavigate={navigateTo} />
+                <CtaFooter onNavigate={navigateTo} />
+              </div>
+            </>
+          )
         )}
         {view === "courses" && <Courses onBack={() => setView("home")} onStartCourse={() => setView("learning")} />}
         {view === "learning" && <Learning onBack={() => setView("courses")} />}
-        {view === "forum" && <Forum />}
+        {view === "forum" && <Forum onBack={() => setView("home")} />}
         {view === "clubs" && <Clubs onBack={() => setView("home")} />}
         {view === "blog" && <Blog onBack={() => setView("home")} />}
         {view === "roadmaps" && <Roadmaps onBack={() => setView("home")} />}

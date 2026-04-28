@@ -12,7 +12,7 @@ const postSelect = {
   author: {
     select: { id: true, username: true, firstName: true, lastName: true, photoURL: true },
   },
-  _count: { select: { comments: true } },
+  _count: { select: { comments: true, favorites: true } },
 };
 
 export class ForumService {
@@ -45,13 +45,16 @@ export class ForumService {
             },
           },
         },
+        favorites: {
+          select: { userId: true },
+        },
       },
     });
   }
 
   async createPost(authorId: string, data: CreateForumPostInput) {
     return prisma.forumPost.create({
-      data: { ...data, authorId },
+      data: { ...data, author: { connect: { id: authorId } } } as any,
       select: postSelect,
     });
   }
@@ -79,7 +82,7 @@ export class ForumService {
   // Comments
   async addComment(postId: string, authorId: string, data: CreateCommentInput) {
     return prisma.forumComment.create({
-      data: { ...data, postId, authorId },
+      data: { ...data, post: { connect: { id: postId } }, author: { connect: { id: authorId } } } as any,
       select: {
         id: true,
         content: true,
@@ -101,6 +104,21 @@ export class ForumService {
       select: { authorId: true },
     });
     return comment?.authorId ?? null;
+  }
+
+  // Favorites
+  async toggleFavorite(postId: string, userId: string) {
+    const existing = await prisma.forumFavorite.findUnique({
+      where: { userId_postId: { userId, postId } },
+    });
+
+    if (existing) {
+      await prisma.forumFavorite.delete({ where: { id: existing.id } });
+      return { action: "removed" };
+    } else {
+      await prisma.forumFavorite.create({ data: { userId, postId } });
+      return { action: "added" };
+    }
   }
 }
 

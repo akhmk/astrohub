@@ -90,22 +90,37 @@ export default function Roadmaps({ onBack }: RoadmapProps) {
         </button>
 
         <div className="flex items-center justify-between mb-20">
-          <h1 className="text-6xl md:text-8xl font-heading text-white font-bold tracking-tighter">
-            Roadmap
-          </h1>
-          {useFallback && (
-            <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-bold">
-              Preview
-            </div>
-          )}
+          <div>
+            <h1 className="text-6xl md:text-8xl font-heading font-bold tracking-tighter mb-4">
+              Roadmaps
+            </h1>
+            <p className="text-white/60 max-w-2xl text-lg font-body">
+              Structured learning paths for mastering aerospace and space science.
+            </p>
+          </div>
+          <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-bold animate-pulse">
+            Coming Soon
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <Loader2 size={32} className="animate-spin text-white/40" />
+        <div className="relative">
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="liquid-glass p-12 rounded-3xl border border-white/10 text-center backdrop-blur-md">
+              <h2 className="text-4xl font-heading font-bold mb-4">Under Construction</h2>
+              <p className="text-white/60 max-w-md mx-auto">
+                Our curriculum team is developing comprehensive learning pathways. 
+                Get ready for structured, interactive study plans.
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+
+          <div className="opacity-20 blur-sm grayscale pointer-events-none">
+            {loading ? (
+              <div className="flex items-center justify-center py-32">
+                <Loader2 size={32} className="animate-spin text-white/40" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Left Column: Phase Cards */}
             <div className="space-y-4">
               {(useFallback ? fallbackRoadmapData : roadmaps).map((item, index) => (
@@ -197,6 +212,8 @@ export default function Roadmaps({ onBack }: RoadmapProps) {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

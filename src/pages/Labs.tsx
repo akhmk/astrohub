@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import CosmicBackground from '../components/CosmicBackground';
-import { api, Lab } from '../lib/api';
 
 interface LabsProps {
   onBack: () => void;
 }
 
-// Fallback data
-const fallbackLabs = [
+const labsData = [
   {
     title: "Virtual Telescope Lab",
     description: "Control digital versions of world-class telescopes. Process real astronomical data and capture your own images of deep-space objects.",
@@ -36,31 +34,7 @@ const fallbackLabs = [
   }
 ];
 
-const difficultyColors: Record<string, string> = {
-  BEGINNER: 'text-green-400 border-green-500/30 bg-green-500/10',
-  INTERMEDIATE: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
-  ADVANCED: 'text-red-400 border-red-500/30 bg-red-500/10',
-};
-
 export default function Labs({ onBack }: LabsProps) {
-  const [labs, setLabs] = useState<Lab[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.getLabs();
-        setLabs(res.data);
-      } catch (err) {
-        console.error('Failed to load labs:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const useFallback = labs.length === 0;
-
   return (
     <div className="min-h-screen bg-black text-white pt-32 pb-24 px-6 lg:px-12 relative">
       <CosmicBackground />
@@ -83,71 +57,51 @@ export default function Labs({ onBack }: LabsProps) {
               Interactive environments for hands-on aerospace engineering and astronomical research.
             </p>
           </div>
-          {useFallback && (
-            <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-bold">
-              Preview
-            </div>
-          )}
+          <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-bold animate-pulse">
+            Coming Soon
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <Loader2 size={32} className="animate-spin text-white/40" />
+        <div className="relative">
+          {/* Coming Soon Overlay - Using same style as Roadmaps as requested */}
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="liquid-glass p-12 rounded-3xl border border-white/10 text-center backdrop-blur-md">
+              <h2 className="text-4xl font-heading font-bold mb-4">Under Construction</h2>
+              <p className="text-white/60 max-w-md mx-auto">
+                Our engineering team is finalizing the interactive simulation modules. 
+                Get ready for a full hands-on virtual lab experience.
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {useFallback ? (
-              fallbackLabs.map((lab, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="liquid-glass rounded-3xl overflow-hidden border border-white/5 hover:border-white/10 transition-all group"
-                >
-                  <div className="aspect-video relative overflow-hidden">
-                    <img src={lab.image} alt={lab.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      {lab.tags.map(tag => (
-                        <span key={tag} className="bg-black/60 backdrop-blur-md text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-8">
-                    <h3 className="text-2xl font-heading mb-4">{lab.title}</h3>
-                    <p className="text-white/50 text-sm leading-relaxed">{lab.description}</p>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              labs.map((lab, i) => (
-                <motion.div
-                  key={lab.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="liquid-glass rounded-3xl overflow-hidden border border-white/5 hover:border-white/10 transition-all group"
-                >
-                  <div className="p-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className={`text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border ${difficultyColors[lab.difficulty]}`}>
-                        {lab.difficulty}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-20 blur-sm grayscale pointer-events-none">
+            {labsData.map((lab, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="liquid-glass rounded-3xl overflow-hidden border border-white/5"
+              >
+                <div className="aspect-video relative overflow-hidden">
+                  <img src={lab.image} alt={lab.title} className="w-full h-full object-cover" />
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    {lab.tags.map(tag => (
+                      <span key={tag} className="bg-black/60 backdrop-blur-md text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10">
+                        {tag}
                       </span>
-                      <span className="text-white/30 text-xs">{lab._count.submissions} submissions</span>
-                    </div>
-                    <h3 className="text-2xl font-heading mb-4">{lab.title}</h3>
-                    <p className="text-white/50 text-sm leading-relaxed mb-6">{lab.description}</p>
-                    <button className="bg-white text-black rounded-full px-6 py-2 text-sm font-bold hover:bg-white/90 transition-colors">
-                      Open Lab
-                    </button>
+                    ))}
                   </div>
-                </motion.div>
-              ))
-            )}
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-heading mb-4">{lab.title}</h3>
+                  <p className="text-white/50 text-sm leading-relaxed">
+                    {lab.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

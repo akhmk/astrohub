@@ -88,6 +88,16 @@ export class ForumController {
     await forumService.deleteComment(request.params.id);
     return reply.status(204).send();
   }
+
+  async toggleFavorite(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const post = await forumService.getPost(request.params.id);
+    if (!post) {
+      return reply.status(404).send({ error: "Post not found" });
+    }
+
+    const result = await forumService.toggleFavorite(request.params.id, request.user!.id);
+    return reply.send(result);
+  }
 }
 
 export const forumController = new ForumController();

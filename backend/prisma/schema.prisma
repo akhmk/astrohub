@@ -17,6 +17,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  TEACHER
 }
 
 model User {
@@ -32,14 +33,18 @@ model User {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  forumPosts    ForumPost[]
-  forumComments ForumComment[]
-  ownedClubs    Club[]           @relation("ClubOwner")
-  memberships   ClubMembership[]
-  clubPosts     ClubPost[]
-  blogPosts     BlogPost[]
+  forumPosts      ForumPost[]
+  forumComments   ForumComment[]
+  forumFavorites  ForumFavorite[]
+  ownedClubs      Club[]             @relation("ClubOwner")
+  memberships     ClubMembership[]
+  clubPosts       ClubPost[]
+  blogPosts       BlogPost[]
   roadmapProgress RoadmapProgress[]
   labSubmissions  LabSubmission[]
+  courses         Course[]
+  enrollments     CourseEnrollment[]
+  lessonProgress  LessonProgress[]
 
   @@map("users")
 }
@@ -58,8 +63,9 @@ model ForumPost {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments ForumComment[]
+  author    User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  ForumComment[]
+  favorites ForumFavorite[]
 
   @@index([authorId])
   @@index([createdAt(sort: Desc)])
@@ -91,6 +97,7 @@ model Club {
   name        String   @unique
   description String?
   imageURL    String?  @map("image_url")
+  isApproved  Boolean  @default(false) @map("is_approved")
   ownerId     String   @map("owner_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -240,3 +247,87 @@ model LabSubmission {
   @@index([labId, userId])
   @@map("lab_submissions")
 }
+
+// ============================================
+// Additions
+// ============================================
+
+model ForumFavorite {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("forum_favorites")
+}
+
+// ============================================
+// Courses & Learning
+// ============================================
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageURL    String?  @map("image_url")
+  authorId    String   @map("author_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  author      User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+  enrollments CourseEnrollment[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  videoURL  String?  @map("video_url")
+  order     Int      @default(0)
+  courseId  String   @map("course_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  @@map("lessons")
+}
+
+model CourseEnrollment {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  courseId   String   @map("course_id")
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("course_enrollments")
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  lessonId    String   @map("lesson_id")
+  courseId    String   @map("course_id")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, courseId])
+  @@map("lesson_progress")
+}
+

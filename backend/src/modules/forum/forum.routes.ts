@@ -17,4 +17,7 @@ export async function forumRoutes(app: FastifyInstance) {
   // Comments
   app.post<IdParams>("/posts/:id/comments", { preHandler: [authMiddleware] }, forumController.addComment);
   app.delete<IdParams>("/comments/:id", { preHandler: [authMiddleware] }, forumController.deleteComment);
+
+  // Favorites
+  app.post<IdParams>("/posts/:id/favorite", { preHandler: [authMiddleware] }, forumController.toggleFavorite);
 }

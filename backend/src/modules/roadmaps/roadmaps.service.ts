@@ -34,10 +34,7 @@ export class RoadmapsService {
 
   async create(data: CreateRoadmapInput) {
     return prisma.roadmap.create({
-      data: {
-        ...data,
-        steps: data.steps as any,
-      },
+      data: data as any,
       select: roadmapSelect,
     });
   }

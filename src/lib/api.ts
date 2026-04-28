@@ -55,7 +55,7 @@ export interface ApiUser {
   firstName: string | null;
   lastName: string | null;
   photoURL: string | null;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'TEACHER';
 }
 
 export interface ForumPost {
@@ -66,7 +66,8 @@ export interface ForumPost {
   createdAt: string;
   updatedAt: string;
   author: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
-  _count: { comments: number };
+  _count: { comments: number; favorites: number };
+  favorites?: { userId: string }[];
 }
 
 export interface ForumComment {
@@ -83,6 +84,9 @@ export interface Club {
   imageURL: string | null;
   createdAt: string;
   ownerId: string;
+  owner?: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
+  isApproved: boolean;
+  memberships?: { userId: string }[];
   _count: { memberships: number; posts: number };
 }
 
@@ -121,6 +125,31 @@ export interface Lab {
   _count: { submissions: number };
 }
 
+// ─── Courses & Lessons ──────────────────────────────────────────
+
+export interface Lesson {
+  id: string;
+  title: string;
+  content?: string;
+  videoURL?: string;
+  order: number;
+  courseId: string;
+  isCompleted?: boolean;
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  description: string | null;
+  imageURL: string | null;
+  createdAt: string;
+  author?: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
+  _count: { enrollments: number; lessons: number };
+  isEnrolled?: boolean;
+  lessons?: Lesson[];
+  completedLessons?: string[];
+}
+
 // ─── API Methods ─────────────────────────────────────────────────
 
 export const api = {
@@ -138,6 +167,8 @@ export const api = {
     request<ForumPost>('/forum/posts', { method: 'POST', body: JSON.stringify(data) }),
   deleteForumPost: (id: string) =>
     request<void>(`/forum/posts/${id}`, { method: 'DELETE' }),
+  toggleFavorite: (postId: string) =>
+    request<{ action: 'added' | 'removed' }>(`/forum/posts/${postId}/favorite`, { method: 'POST' }),
   addComment: (postId: string, content: string) =>
     request<ForumComment>(`/forum/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
   deleteComment: (id: string) =>
@@ -151,11 +182,15 @@ export const api = {
     request<Club>('/clubs', { method: 'POST', body: JSON.stringify(data) }),
   joinClub: (id: string) => request<void>(`/clubs/${id}/join`, { method: 'POST' }),
   leaveClub: (id: string) => request<void>(`/clubs/${id}/leave`, { method: 'POST' }),
+  approveClub: (id: string) => request<Club>(`/clubs/${id}/approve`, { method: 'PATCH' }),
 
   // Blog
   getBlogPosts: (page = 1, limit = 20) =>
     request<PaginatedResponse<BlogPost>>(`/blog?page=${page}&limit=${limit}`),
   getBlogPost: (slug: string) => request<BlogPost>(`/blog/${slug}`),
+  createBlogPost: (data: { title: string; slug: string; content: string; excerpt?: string; published?: boolean }) =>
+    request<BlogPost>('/blog', { method: 'POST', body: JSON.stringify(data) }),
+  deleteBlogPost: (id: string) => request<void>(`/blog/${id}`, { method: 'DELETE' }),
 
   // Roadmaps
   getRoadmaps: (page = 1, limit = 20) =>
@@ -171,4 +206,15 @@ export const api = {
   getLab: (id: string) => request<Lab>(`/labs/${id}`),
   submitLab: (id: string, content: string) =>
     request<any>(`/labs/${id}/submissions`, { method: 'POST', body: JSON.stringify({ content }) }),
+
+  // Courses
+  getCourses: (page = 1, limit = 20) =>
+    request<PaginatedResponse<Course>>(`/courses?page=${page}&limit=${limit}`),
+  getCourse: (id: string) => request<Course>(`/courses/${id}`),
+  createCourse: (data: { title: string; description?: string; imageURL?: string }) =>
+    request<Course>('/courses', { method: 'POST', body: JSON.stringify(data) }),
+  createLesson: (courseId: string, data: { title: string; content?: string; videoURL?: string; order?: number }) =>
+    request<Lesson>(`/courses/${courseId}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
+  enrollCourse: (id: string) => request<void>(`/courses/${id}/enroll`, { method: 'POST' }),
+  finishLesson: (lessonId: string) => request<void>(`/courses/lessons/${lessonId}/complete`, { method: 'POST' }),
 };
