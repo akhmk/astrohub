@@ -141,4 +141,116 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
   }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ─── Lesson prose ──────────────────────────────────────────── */
+  .lesson-prose h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    margin-top: 2.5rem;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .lesson-prose h2:first-child { margin-top: 0; }
+  .lesson-prose h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: rgba(255,255,255,0.9);
+  }
+  .lesson-prose h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: rgba(255,255,255,0.7);
+  }
+  .lesson-prose p {
+    color: rgba(255,255,255,0.6);
+    line-height: 1.8;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+  .lesson-prose ul, .lesson-prose ol {
+    margin-bottom: 1.25rem;
+    padding-left: 0;
+    list-style: none;
+  }
+  .lesson-prose li {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+    position: relative;
+  }
+  .lesson-prose li::before {
+    content: '–';
+    position: absolute;
+    left: 0;
+    color: rgba(255,255,255,0.2);
+  }
+  .lesson-prose li strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+  .lesson-prose strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+  .lesson-prose em { font-style: italic; }
+  .lesson-prose code {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85em;
+    color: #93c5fd;
+  }
+
+  /* ─── Lesson callouts ───────────────────────────────────────── */
+  .lesson-callout {
+    background: rgba(59,130,246,0.05);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-left: 3px solid #3b82f6;
+    border-radius: 0 12px 12px 0;
+    padding: 1.25rem 1.5rem;
+    margin: 1.75rem 0;
+  }
+  .lesson-callout strong {
+    color: #93c5fd;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .lesson-callout p, .lesson-callout ul, .lesson-callout li {
+    color: rgba(147,197,253,0.7);
+    font-size: 0.9rem;
+  }
+  .lesson-callout--reflect {
+    background: rgba(168,85,247,0.05);
+    border-color: rgba(168,85,247,0.2);
+    border-left-color: #a855f7;
+  }
+  .lesson-callout--reflect strong { color: #c4b5fd; }
+  .lesson-callout--reflect p,
+  .lesson-callout--reflect ul,
+  .lesson-callout--reflect li { color: rgba(196,181,253,0.7); }
+  .lesson-callout--formula {
+    background: rgba(20,184,166,0.05);
+    border-color: rgba(20,184,166,0.2);
+    border-left-color: #14b8a6;
+    font-family: ui-monospace, monospace;
+  }
+  .lesson-callout--formula strong { color: #5eead4; }
+  .lesson-callout--formula ul,
+  .lesson-callout--formula li {
+    color: rgba(94,234,212,0.7);
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+  }
 }

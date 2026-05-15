@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Play, FileText, CheckCircle, ChevronRight, BookOpen, Award,
-  Clock, Menu, X, Bookmark, StickyNote, BarChart3, Loader2, ChevronDown,
+  ArrowLeft, Play, FileText, CheckCircle, ChevronRight, ChevronLeft, BookOpen, Award,
+  Clock, Menu, X, StickyNote, BarChart3, Loader2, ChevronDown,
   ChevronUp, Send, Trash2, Edit3, Check, RotateCcw, Trophy, Zap, Target,
   AlertCircle, Star,
 } from 'lucide-react';
@@ -638,8 +638,13 @@ export default function Learning({ onBack, courseId }: Props) {
     try {
       const data = await api.getCourse(id);
       setCourse(data);
-      // Expand all modules by default
       setExpandedModules(new Set(data.modules.map(m => m.id)));
+      // Auto-load the first lesson
+      const firstLesson = data.modules[0]?.lessons[0] ?? data.lessons[0];
+      if (firstLesson) {
+        const lessonData = await api.getLesson(firstLesson.id);
+        setActiveLesson(lessonData);
+      }
     } catch (e: any) {
       console.error('Failed to load course', e);
     } finally {
@@ -649,10 +654,12 @@ export default function Learning({ onBack, courseId }: Props) {
 
   const loadLesson = async (lessonId: string) => {
     setLessonLoading(true);
+    setActiveTab('lessons');
+    // Close sidebar on mobile after selecting a lesson
+    if (window.innerWidth < 1024) setSidebarOpen(false);
     try {
       const data = await api.getLesson(lessonId);
       setActiveLesson(data);
-      setActiveTab('lessons');
     } catch (e) {
       console.error('Failed to load lesson', e);
     } finally {
@@ -719,6 +726,10 @@ export default function Learning({ onBack, courseId }: Props) {
   const progressPct = totalLessons > 0 ? Math.round((doneLessons / totalLessons) * 100) : 0;
   const isCompleted = course?.completedLessons.includes(activeLesson?.id ?? '') ?? false;
   const canComplete = course?.isEnrolled && activeLesson && !isCompleted;
+
+  const activeLessonIndex = activeLesson ? allLessons.findIndex(l => l.id === activeLesson.id) : -1;
+  const prevLesson = activeLessonIndex > 0 ? allLessons[activeLessonIndex - 1] : null;
+  const nextLesson = activeLessonIndex >= 0 && activeLessonIndex < allLessons.length - 1 ? allLessons[activeLessonIndex + 1] : null;
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'lessons', label: 'Lessons', icon: BookOpen },
@@ -911,6 +922,30 @@ export default function Learning({ onBack, courseId }: Props) {
                         </button>
                       )}
                     </div>
+
+                    {/* Prev / Next lesson navigation */}
+                    {(prevLesson || nextLesson) && (
+                      <div className="mt-6 flex items-center justify-between gap-4">
+                        {prevLesson ? (
+                          <button
+                            onClick={() => loadLesson(prevLesson.id)}
+                            className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors group"
+                          >
+                            <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                            <span className="truncate max-w-[180px]">{prevLesson.title}</span>
+                          </button>
+                        ) : <div />}
+                        {nextLesson && (
+                          <button
+                            onClick={() => loadLesson(nextLesson.id)}
+                            className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors group ml-auto"
+                          >
+                            <span className="truncate max-w-[180px]">{nextLesson.title}</span>
+                            <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </>
@@ -1117,108 +1152,6 @@ export default function Learning({ onBack, courseId }: Props) {
         </aside>
       </div>
 
-      {/* Lesson prose styles */}
-      <style>{`
-        .lesson-prose h2 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          margin-bottom: 1.25rem;
-          margin-top: 2.5rem;
-          letter-spacing: -0.02em;
-          color: #fff;
-        }
-        .lesson-prose h2:first-child { margin-top: 0; }
-        .lesson-prose h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          margin-top: 2rem;
-          margin-bottom: 0.75rem;
-          color: rgba(255,255,255,0.9);
-        }
-        .lesson-prose h4 {
-          font-size: 1rem;
-          font-weight: 700;
-          margin-top: 1.5rem;
-          margin-bottom: 0.5rem;
-          color: rgba(255,255,255,0.7);
-        }
-        .lesson-prose p {
-          color: rgba(255,255,255,0.6);
-          line-height: 1.8;
-          margin-bottom: 1.25rem;
-          font-size: 0.95rem;
-        }
-        .lesson-prose ul, .lesson-prose ol {
-          margin-bottom: 1.25rem;
-          padding-left: 0;
-          list-style: none;
-        }
-        .lesson-prose li {
-          color: rgba(255,255,255,0.6);
-          font-size: 0.95rem;
-          line-height: 1.7;
-          margin-bottom: 0.5rem;
-          padding-left: 1.25rem;
-          position: relative;
-        }
-        .lesson-prose li::before {
-          content: '–';
-          position: absolute;
-          left: 0;
-          color: rgba(255,255,255,0.2);
-        }
-        .lesson-prose li strong {
-          color: rgba(255,255,255,0.9);
-          font-weight: 600;
-        }
-        .lesson-prose strong {
-          color: rgba(255,255,255,0.9);
-          font-weight: 600;
-        }
-        .lesson-prose em { font-style: italic; }
-        .lesson-prose code {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 6px;
-          padding: 2px 6px;
-          font-family: ui-monospace, monospace;
-          font-size: 0.85em;
-          color: #93c5fd;
-        }
-        .lesson-callout {
-          background: rgba(59,130,246,0.05);
-          border: 1px solid rgba(59,130,246,0.2);
-          border-left: 3px solid #3b82f6;
-          border-radius: 0 12px 12px 0;
-          padding: 1.25rem 1.5rem;
-          margin: 1.75rem 0;
-        }
-        .lesson-callout strong {
-          color: #93c5fd;
-          font-weight: 700;
-          display: block;
-          margin-bottom: 0.5rem;
-        }
-        .lesson-callout p, .lesson-callout ul, .lesson-callout li {
-          color: rgba(147,197,253,0.7);
-          font-size: 0.9rem;
-        }
-        .lesson-callout--reflect {
-          background: rgba(168,85,247,0.05);
-          border-color: rgba(168,85,247,0.2);
-          border-left-color: #a855f7;
-        }
-        .lesson-callout--reflect strong { color: #c4b5fd; }
-        .lesson-callout--reflect p, .lesson-callout--reflect ul, .lesson-callout--reflect li { color: rgba(196,181,253,0.7); }
-        .lesson-callout--formula {
-          background: rgba(20,184,166,0.05);
-          border-color: rgba(20,184,166,0.2);
-          border-left-color: #14b8a6;
-          font-family: ui-monospace, monospace;
-        }
-        .lesson-callout--formula strong { color: #5eead4; }
-        .lesson-callout--formula ul, .lesson-callout--formula li { color: rgba(94,234,212,0.7); font-family: ui-monospace, monospace; font-size: 0.85rem; }
-      `}</style>
     </div>
   );
 }
