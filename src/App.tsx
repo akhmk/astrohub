@@ -25,24 +25,30 @@ export type ViewState = "home" | "courses" | "forum" | "clubs" | "blog" | "roadm
 
 export default function App() {
   const [view, setView] = useState<ViewState>("home");
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const { user, profile, logout } = useAuth();
 
   const navigateTo = (v: ViewState) => setView(v);
 
+  const handleStartCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setView("learning");
+  };
+
   return (
     <div className="bg-black min-h-screen selection:bg-white selection:text-black">
       {view !== "auth" && view !== "learning" && (
-        <Navbar 
-          onNavigate={navigateTo} 
-          user={user} 
-          profile={profile} 
-          onLogout={logout} 
+        <Navbar
+          onNavigate={navigateTo}
+          user={user}
+          profile={profile}
+          onLogout={logout}
         />
       )}
       <main>
         {view === "home" && (
           user ? (
-            <Dashboard user={user} profile={profile} onNavigate={navigateTo} />
+            <Dashboard user={user} profile={profile} onNavigate={navigateTo} onStartCourse={handleStartCourse} />
           ) : (
             <>
               <Hero onNavigate={navigateTo} />
@@ -55,8 +61,18 @@ export default function App() {
             </>
           )
         )}
-        {view === "courses" && <Courses onBack={() => setView("home")} onStartCourse={() => setView("learning")} />}
-        {view === "learning" && <Learning onBack={() => setView("courses")} />}
+        {view === "courses" && (
+          <Courses
+            onBack={() => setView("home")}
+            onStartCourse={handleStartCourse}
+          />
+        )}
+        {view === "learning" && (
+          <Learning
+            onBack={() => setView("courses")}
+            courseId={selectedCourseId}
+          />
+        )}
         {view === "forum" && <Forum onBack={() => setView("home")} />}
         {view === "clubs" && <Clubs onBack={() => setView("home")} />}
         {view === "blog" && <Blog onBack={() => setView("home")} />}
