@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { coursesService } from "./courses.service.js";
-import { createCourseSchema, createLessonSchema } from "./courses.schema.js";
+import { createCourseSchema, createLessonSchema, createNoteSchema, updateNoteSchema } from "./courses.schema.js";
 import { paginationSchema } from "../../utils/pagination.js";
 
 export class CoursesController {
@@ -12,9 +12,7 @@ export class CoursesController {
 
   async getCourse(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const course = await coursesService.getCourse(request.params.id, request.user?.id);
-    if (!course) {
-      return reply.status(404).send({ error: "Course not found" });
-    }
+    if (!course) return reply.status(404).send({ error: "Course not found" });
     return reply.send(course);
   }
 
@@ -23,7 +21,6 @@ export class CoursesController {
     if (!parsed.success) {
       return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
     }
-
     const course = await coursesService.createCourse(request.user!.id, parsed.data);
     return reply.status(201).send(course);
   }
@@ -33,7 +30,6 @@ export class CoursesController {
     if (!parsed.success) {
       return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
     }
-
     try {
       const lesson = await coursesService.createLesson(request.params.id, parsed.data);
       return reply.status(201).send(lesson);
@@ -44,9 +40,7 @@ export class CoursesController {
 
   async getLesson(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const lesson = await coursesService.getLesson(request.params.id, request.user?.id);
-    if (!lesson) {
-      return reply.status(404).send({ error: "Lesson not found" });
-    }
+    if (!lesson) return reply.status(404).send({ error: "Lesson not found" });
     return reply.send(lesson);
   }
 
@@ -65,6 +59,47 @@ export class CoursesController {
       return reply.send(progress);
     } catch (error: any) {
       return reply.status(400).send({ error: error.message });
+    }
+  }
+
+  async getEnrolledCourses(request: FastifyRequest, reply: FastifyReply) {
+    const courses = await coursesService.getEnrolledCourses(request.user!.id);
+    return reply.send(courses);
+  }
+
+  async getCourseNotes(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const notes = await coursesService.getCourseNotes(request.params.id, request.user!.id);
+    return reply.send(notes);
+  }
+
+  async createNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const parsed = createNoteSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    }
+    const note = await coursesService.createNote(request.user!.id, request.params.id, parsed.data);
+    return reply.status(201).send(note);
+  }
+
+  async updateNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const parsed = updateNoteSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    }
+    try {
+      const note = await coursesService.updateNote(request.params.id, request.user!.id, parsed.data);
+      return reply.send(note);
+    } catch (error: any) {
+      return reply.status(404).send({ error: error.message });
+    }
+  }
+
+  async deleteNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    try {
+      await coursesService.deleteNote(request.params.id, request.user!.id);
+      return reply.status(204).send();
+    } catch (error: any) {
+      return reply.status(404).send({ error: error.message });
     }
   }
 }

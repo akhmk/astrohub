@@ -5,7 +5,7 @@ import { ArrowLeft, Search, Filter, Clock, Users, Star, ArrowRight, BookOpen, Ch
 import { api, Course, Lesson } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 
-export default function Courses({ onBack, onStartCourse }: { onBack: () => void, onStartCourse: () => void }) {
+export default function Courses({ onBack, onStartCourse }: { onBack: () => void, onStartCourse: (courseId: string) => void }) {
   const { user, profile } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export default function Courses({ onBack, onStartCourse }: { onBack: () => void,
     (c.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const canCreate = profile?.role === 'ADMIN' || profile?.role === 'TEACHER';
+  const canCreate = profile?.role === 'admin' || profile?.role === 'teacher' as any;
 
   return (
     <div className="min-h-screen bg-black text-white pt-24 pb-20 px-8 lg:px-16 relative">
@@ -397,9 +397,15 @@ export default function Courses({ onBack, onStartCourse }: { onBack: () => void,
                               </>
                             );
                           })()}
+                          <button
+                            onClick={() => onStartCourse(selectedCourseDetail.id)}
+                            className="w-full bg-white text-black rounded-full py-4 text-sm font-bold hover:scale-[1.02] transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                          >
+                            Continue Learning
+                          </button>
                         </>
                       ) : (
-                        <button 
+                        <button
                           onClick={handleEnroll}
                           className="w-full bg-white text-black rounded-full py-4 text-sm font-bold hover:scale-[1.02] transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                         >

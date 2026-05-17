@@ -45,6 +45,7 @@ model User {
   courses         Course[]
   enrollments     CourseEnrollment[]
   lessonProgress  LessonProgress[]
+  courseNotes     CourseNote[]
 
   @@map("users")
 }
@@ -282,6 +283,7 @@ model Course {
   author      User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
   lessons     Lesson[]
   enrollments CourseEnrollment[]
+  notes       CourseNote[]
 
   @@map("courses")
 }
@@ -291,6 +293,8 @@ model Lesson {
   title     String
   content   String?
   videoURL  String?  @map("video_url")
+  duration  Int?
+  summary   String?
   order     Int      @default(0)
   courseId  String   @map("course_id")
   createdAt DateTime @default(now()) @map("created_at")
@@ -299,8 +303,26 @@ model Lesson {
   // Relations
   course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   progress LessonProgress[]
+  notes    CourseNote[]
 
   @@map("lessons")
+}
+
+model CourseNote {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  lessonId  String?  @map("lesson_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([userId, courseId])
+  @@map("course_notes")
 }
 
 model CourseEnrollment {

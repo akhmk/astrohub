@@ -141,4 +141,19 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
   }
+
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Lesson HTML content */
+  .lesson-prose h2 { font-size: 1.6rem; font-weight: 700; margin: 2rem 0 1rem; color: #fff; }
+  .lesson-prose h2:first-child { margin-top: 0; }
+  .lesson-prose h3 { font-size: 1.15rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: rgba(255,255,255,0.9); }
+  .lesson-prose p { color: rgba(255,255,255,0.6); line-height: 1.8; margin-bottom: 1.1rem; font-size: 0.95rem; }
+  .lesson-prose ul, .lesson-prose ol { padding-left: 0; list-style: none; margin-bottom: 1.1rem; }
+  .lesson-prose li { color: rgba(255,255,255,0.6); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0.4rem; padding-left: 1.2rem; position: relative; }
+  .lesson-prose li::before { content: '–'; position: absolute; left: 0; color: rgba(255,255,255,0.2); }
+  .lesson-prose strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+  .lesson-prose em { font-style: italic; }
+  .lesson-prose code { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 6px; font-family: ui-monospace, monospace; font-size: 0.85em; color: #93c5fd; }
 }

@@ -130,8 +130,10 @@ export interface Lab {
 export interface Lesson {
   id: string;
   title: string;
-  content?: string;
-  videoURL?: string;
+  content?: string | null;
+  videoURL?: string | null;
+  duration?: number | null;
+  summary?: string | null;
   order: number;
   courseId: string;
   isCompleted?: boolean;
@@ -148,6 +150,24 @@ export interface Course {
   isEnrolled?: boolean;
   lessons?: Lesson[];
   completedLessons?: string[];
+}
+
+export interface EnrolledCourse extends Course {
+  enrolledAt: string;
+  completedLessonsCount: number;
+  totalLessonsCount: number;
+  progress: number;
+}
+
+export interface CourseNote {
+  id: string;
+  userId: string;
+  courseId: string;
+  lessonId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  lesson?: { id: string; title: string } | null;
 }
 
 // ─── API Methods ─────────────────────────────────────────────────
@@ -207,14 +227,31 @@ export const api = {
   submitLab: (id: string, content: string) =>
     request<any>(`/labs/${id}/submissions`, { method: 'POST', body: JSON.stringify({ content }) }),
 
-  // Courses
+  // Courses — listing & detail
   getCourses: (page = 1, limit = 20) =>
     request<PaginatedResponse<Course>>(`/courses?page=${page}&limit=${limit}`),
   getCourse: (id: string) => request<Course>(`/courses/${id}`),
+  getLesson: (lessonId: string) => request<Lesson>(`/courses/lessons/${lessonId}`),
+
+  // Courses — create (admin/teacher)
   createCourse: (data: { title: string; description?: string; imageURL?: string }) =>
     request<Course>('/courses', { method: 'POST', body: JSON.stringify(data) }),
-  createLesson: (courseId: string, data: { title: string; content?: string; videoURL?: string; order?: number }) =>
+  createLesson: (courseId: string, data: { title: string; content?: string; videoURL?: string; duration?: number; summary?: string; order?: number }) =>
     request<Lesson>(`/courses/${courseId}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
-  enrollCourse: (id: string) => request<void>(`/courses/${id}/enroll`, { method: 'POST' }),
+
+  // Courses — enrollment & progress
+  enrollCourse: (id: string) => request<{ message: string }>(`/courses/${id}/enroll`, { method: 'POST' }),
   finishLesson: (lessonId: string) => request<void>(`/courses/lessons/${lessonId}/complete`, { method: 'POST' }),
+
+  // Courses — enrolled list (for dashboard)
+  getEnrolledCourses: () => request<EnrolledCourse[]>('/courses/my/enrolled'),
+
+  // Notes
+  getCourseNotes: (courseId: string) => request<CourseNote[]>(`/courses/${courseId}/notes`),
+  createNote: (courseId: string, data: { content: string; lessonId?: string }) =>
+    request<CourseNote>(`/courses/${courseId}/notes`, { method: 'POST', body: JSON.stringify(data) }),
+  updateNote: (noteId: string, content: string) =>
+    request<CourseNote>(`/courses/notes/${noteId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
+  deleteNote: (noteId: string) =>
+    request<void>(`/courses/notes/${noteId}`, { method: 'DELETE' }),
 };
