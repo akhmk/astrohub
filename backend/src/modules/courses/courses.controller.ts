@@ -1,16 +1,28 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { coursesService } from "./courses.service.js";
-import { createCourseSchema, createLessonSchema, createNoteSchema, updateNoteSchema } from "./courses.schema.js";
-import { paginationSchema } from "../../utils/pagination.js";
+import {
+  createCourseSchema,
+  createModuleSchema,
+  createLessonSchema,
+  createQuizSchema,
+  submitQuizSchema,
+  createNoteSchema,
+  updateNoteSchema,
+  coursesFilterSchema,
+} from "./courses.schema.js";
+
+type IdParams = { Params: { id: string } };
 
 export class CoursesController {
+  // ─── Courses ────────────────────────────────────────────────
+
   async listCourses(request: FastifyRequest, reply: FastifyReply) {
-    const query = paginationSchema.parse(request.query);
-    const result = await coursesService.listCourses(query);
+    const filter = coursesFilterSchema.parse(request.query);
+    const result = await coursesService.listCourses(filter, request.user?.id);
     return reply.send(result);
   }
 
-  async getCourse(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async getCourse(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     const course = await coursesService.getCourse(request.params.id, request.user?.id);
     if (!course) return reply.status(404).send({ error: "Course not found" });
     return reply.send(course);
@@ -25,7 +37,24 @@ export class CoursesController {
     return reply.status(201).send(course);
   }
 
-  async createLesson(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  // ─── Modules ────────────────────────────────────────────────
+
+  async createModule(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const parsed = createModuleSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    }
+    try {
+      const mod = await coursesService.createModule(request.params.id, parsed.data);
+      return reply.status(201).send(mod);
+    } catch (e: any) {
+      return reply.status(404).send({ error: e.message });
+    }
+  }
+
+  // ─── Lessons ────────────────────────────────────────────────
+
+  async createLesson(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     const parsed = createLessonSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
@@ -33,55 +62,70 @@ export class CoursesController {
     try {
       const lesson = await coursesService.createLesson(request.params.id, parsed.data);
       return reply.status(201).send(lesson);
-    } catch (error: any) {
-      return reply.status(404).send({ error: error.message });
+    } catch (e: any) {
+      return reply.status(404).send({ error: e.message });
     }
   }
 
-  async getLesson(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async getLesson(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     const lesson = await coursesService.getLesson(request.params.id, request.user?.id);
     if (!lesson) return reply.status(404).send({ error: "Lesson not found" });
     return reply.send(lesson);
   }
 
-  async enrollUser(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  // ─── Enrollment ─────────────────────────────────────────────
+
+  async enrollUser(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     try {
       await coursesService.enrollUser(request.params.id, request.user!.id);
       return reply.send({ message: "Enrolled successfully" });
-    } catch (error: any) {
-      return reply.status(400).send({ error: error.message });
+    } catch (e: any) {
+      return reply.status(400).send({ error: e.message });
     }
   }
 
-  async finishLesson(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async finishLesson(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     try {
       const progress = await coursesService.finishLesson(request.params.id, request.user!.id);
       return reply.send(progress);
-    } catch (error: any) {
-      return reply.status(400).send({ error: error.message });
+    } catch (e: any) {
+      return reply.status(400).send({ error: e.message });
     }
   }
 
-  async getEnrolledCourses(request: FastifyRequest, reply: FastifyReply) {
-    const courses = await coursesService.getEnrolledCourses(request.user!.id);
-    return reply.send(courses);
+  // ─── Bookmarks ──────────────────────────────────────────────
+
+  async toggleBookmark(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const result = await coursesService.toggleBookmark(request.params.id, request.user!.id);
+    return reply.send(result);
   }
 
-  async getCourseNotes(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
-    const notes = await coursesService.getCourseNotes(request.params.id, request.user!.id);
-    return reply.send(notes);
+  async getUserBookmarks(request: FastifyRequest, reply: FastifyReply) {
+    const bookmarks = await coursesService.getUserBookmarks(request.user!.id);
+    return reply.send(bookmarks);
   }
 
-  async createNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  // ─── Notes ──────────────────────────────────────────────────
+
+  async createNote(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     const parsed = createNoteSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
     }
-    const note = await coursesService.createNote(request.user!.id, request.params.id, parsed.data);
-    return reply.status(201).send(note);
+    try {
+      const note = await coursesService.createNote(request.params.id, request.user!.id, parsed.data);
+      return reply.status(201).send(note);
+    } catch (e: any) {
+      return reply.status(400).send({ error: e.message });
+    }
   }
 
-  async updateNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async getCourseNotes(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const notes = await coursesService.getCourseNotes(request.params.id, request.user!.id);
+    return reply.send(notes);
+  }
+
+  async updateNote(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     const parsed = updateNoteSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
@@ -89,18 +133,64 @@ export class CoursesController {
     try {
       const note = await coursesService.updateNote(request.params.id, request.user!.id, parsed.data);
       return reply.send(note);
-    } catch (error: any) {
-      return reply.status(404).send({ error: error.message });
+    } catch (e: any) {
+      return reply.status(404).send({ error: e.message });
     }
   }
 
-  async deleteNote(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async deleteNote(request: FastifyRequest<IdParams>, reply: FastifyReply) {
     try {
       await coursesService.deleteNote(request.params.id, request.user!.id);
       return reply.status(204).send();
-    } catch (error: any) {
-      return reply.status(404).send({ error: error.message });
+    } catch (e: any) {
+      return reply.status(404).send({ error: e.message });
     }
+  }
+
+  // ─── Quiz ────────────────────────────────────────────────────
+
+  async createQuiz(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const parsed = createQuizSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    }
+    try {
+      const quiz = await coursesService.createQuiz(request.params.id, parsed.data);
+      return reply.status(201).send(quiz);
+    } catch (e: any) {
+      return reply.status(404).send({ error: e.message });
+    }
+  }
+
+  async getCourseQuiz(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const quiz = await coursesService.getCourseQuiz(request.params.id, request.user?.id);
+    if (!quiz) return reply.status(404).send({ error: "No quiz found for this course" });
+    return reply.send(quiz);
+  }
+
+  async submitQuiz(request: FastifyRequest<IdParams>, reply: FastifyReply) {
+    const parsed = submitQuizSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    }
+    try {
+      const result = await coursesService.submitQuiz(request.params.id, request.user!.id, parsed.data);
+      return reply.send(result);
+    } catch (e: any) {
+      return reply.status(400).send({ error: e.message });
+    }
+  }
+
+  // ─── Stats ───────────────────────────────────────────────────
+
+  async getUserStats(request: FastifyRequest, reply: FastifyReply) {
+    const stats = await coursesService.getUserStats(request.user!.id);
+    return reply.send(stats);
+  }
+
+  async getEnrolledCourses(request: FastifyRequest, reply: FastifyReply) {
+    const courses = await coursesService.getEnrolledCourses(request.user!.id);
+    return reply.send(courses);
   }
 }
 

@@ -27,14 +27,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(body.message || `API error: ${res.status}`);
+    throw new Error(body.message || body.error || `API error: ${res.status}`);
   }
 
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
-// ─── Types ───────────────────────────────────────────────────────
+// ─── Shared Types ──────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
   data: T[];
@@ -58,6 +58,8 @@ export interface ApiUser {
   role: 'ADMIN' | 'USER' | 'TEACHER';
 }
 
+// ─── Forum ─────────────────────────────────────────────────────
+
 export interface ForumPost {
   id: string;
   title: string;
@@ -77,6 +79,8 @@ export interface ForumComment {
   author: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
 }
 
+// ─── Clubs ─────────────────────────────────────────────────────
+
 export interface Club {
   id: string;
   name: string;
@@ -90,6 +94,8 @@ export interface Club {
   _count: { memberships: number; posts: number };
 }
 
+// ─── Blog ──────────────────────────────────────────────────────
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -101,6 +107,8 @@ export interface BlogPost {
   createdAt: string;
   author?: { id: string; firstName: string | null; lastName: string | null };
 }
+
+// ─── Roadmaps ──────────────────────────────────────────────────
 
 export interface Roadmap {
   id: string;
@@ -115,6 +123,8 @@ export interface RoadmapProgress {
   updatedAt: string | null;
 }
 
+// ─── Labs ──────────────────────────────────────────────────────
+
 export interface Lab {
   id: string;
   title: string;
@@ -125,39 +135,118 @@ export interface Lab {
   _count: { submissions: number };
 }
 
-// ─── Courses & Lessons ──────────────────────────────────────────
+// ─── Courses & Learning ────────────────────────────────────────
 
-export interface Lesson {
+export type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+export type LessonType = 'TEXT' | 'VIDEO' | 'INTERACTIVE';
+
+export interface LessonSummary {
   id: string;
   title: string;
-  content?: string | null;
-  videoURL?: string | null;
-  duration?: number | null;
-  summary?: string | null;
+  duration: number | null;
+  lessonType: LessonType;
   order: number;
+  moduleId: string | null;
+  summary: string | null;
+}
+
+export interface Lesson extends LessonSummary {
+  content: string | null;
+  videoURL: string | null;
   courseId: string;
   isCompleted?: boolean;
 }
 
-export interface Course {
+export interface CourseModule {
   id: string;
   title: string;
   description: string | null;
-  imageURL: string | null;
-  createdAt: string;
-  author?: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
-  _count: { enrollments: number; lessons: number };
-  isEnrolled?: boolean;
-  lessons?: Lesson[];
-  completedLessons?: string[];
+  order: number;
+  courseId: string;
+  lessons: LessonSummary[];
 }
 
-export interface EnrolledCourse extends Course {
-  enrolledAt: string;
-  completedLessonsCount: number;
-  totalLessonsCount: number;
-  progress: number;
+export interface CourseSummary {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  imageURL: string | null;
+  category: string | null;
+  level: Difficulty;
+  estimatedHours: number | null;
+  tags: string[];
+  isPublished: boolean;
+  createdAt: string;
+  author?: { id: string; firstName: string | null; lastName: string | null; photoURL: string | null };
+  _count: { enrollments: number; lessons: number; modules: number };
+  isBookmarked?: boolean;
+  isEnrolled?: boolean;
+  completedLessonsCount?: number;
 }
+
+export interface Course extends CourseSummary {
+  outcomes: string[];
+  prerequisites: string[];
+  modules: CourseModule[];
+  lessons: LessonSummary[]; // lessons without a module
+  completedLessons: string[];
+  isBookmarked: boolean;
+}
+
+// ─── Quiz ──────────────────────────────────────────────────────
+
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizOptionFull extends QuizOption {
+  isCorrect: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: QuizOption[];
+  explanation: string | null;
+  order: number;
+  points: number;
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  description: string | null;
+  courseId: string;
+  passingScore: number;
+  questions: QuizQuestion[];
+  myAttempts: QuizAttemptSummary[];
+  bestAttempt: QuizAttemptSummary | null;
+}
+
+export interface QuizAttemptSummary {
+  id: string;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  completedAt: string;
+}
+
+export interface QuizAttemptAnswer {
+  questionId: string;
+  selectedOptionId: string | null;
+  correctOptionId: string | null;
+  isCorrect: boolean;
+  explanation: string | null;
+}
+
+export interface QuizAttemptResult extends QuizAttemptSummary {
+  percentage: number;
+  answers: QuizAttemptAnswer[];
+}
+
+// ─── Notes ─────────────────────────────────────────────────────
 
 export interface CourseNote {
   id: string;
@@ -170,7 +259,25 @@ export interface CourseNote {
   lesson?: { id: string; title: string } | null;
 }
 
-// ─── API Methods ─────────────────────────────────────────────────
+// ─── Stats ─────────────────────────────────────────────────────
+
+export interface UserStats {
+  xp: number;
+  streak: number;
+  lastStudiedAt: string | null;
+  totalLessonsCompleted: number;
+  totalQuizzesPassed: number;
+  enrolledCourses: number;
+}
+
+export interface EnrolledCourse extends CourseSummary {
+  enrolledAt: string;
+  completedLessonsCount: number;
+  totalLessonsCount: number;
+  progress: number;
+}
+
+// ─── API Methods ───────────────────────────────────────────────
 
 export const api = {
   // Users
@@ -228,30 +335,58 @@ export const api = {
     request<any>(`/labs/${id}/submissions`, { method: 'POST', body: JSON.stringify({ content }) }),
 
   // Courses — listing & detail
-  getCourses: (page = 1, limit = 20) =>
-    request<PaginatedResponse<Course>>(`/courses?page=${page}&limit=${limit}`),
+  getCourses: (params: { page?: number; limit?: number; search?: string; category?: string; level?: Difficulty } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
+    if (params.search) q.set('search', params.search);
+    if (params.category) q.set('category', params.category);
+    if (params.level) q.set('level', params.level);
+    return request<PaginatedResponse<CourseSummary>>(`/courses?${q.toString()}`);
+  },
   getCourse: (id: string) => request<Course>(`/courses/${id}`),
-  getLesson: (lessonId: string) => request<Lesson>(`/courses/lessons/${lessonId}`),
 
-  // Courses — create (admin/teacher)
-  createCourse: (data: { title: string; description?: string; imageURL?: string }) =>
-    request<Course>('/courses', { method: 'POST', body: JSON.stringify(data) }),
-  createLesson: (courseId: string, data: { title: string; content?: string; videoURL?: string; duration?: number; summary?: string; order?: number }) =>
-    request<Lesson>(`/courses/${courseId}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
+  // Courses — admin/teacher
+  createCourse: (data: {
+    title: string; subtitle?: string; description?: string; imageURL?: string;
+    category?: string; level?: Difficulty; estimatedHours?: number;
+    tags?: string[]; outcomes?: string[]; prerequisites?: string[];
+  }) => request<CourseSummary>('/courses', { method: 'POST', body: JSON.stringify(data) }),
+  createModule: (courseId: string, data: { title: string; description?: string; order?: number }) =>
+    request<any>(`/courses/${courseId}/modules`, { method: 'POST', body: JSON.stringify(data) }),
+  createLesson: (courseId: string, data: {
+    title: string; content?: string; videoURL?: string; duration?: number;
+    summary?: string; lessonType?: LessonType; order?: number; moduleId?: string;
+  }) => request<Lesson>(`/courses/${courseId}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
+  createQuiz: (courseId: string, data: any) =>
+    request<Quiz>(`/courses/${courseId}/quiz`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Courses — enrollment & progress
   enrollCourse: (id: string) => request<{ message: string }>(`/courses/${id}/enroll`, { method: 'POST' }),
   finishLesson: (lessonId: string) => request<void>(`/courses/lessons/${lessonId}/complete`, { method: 'POST' }),
+  getLesson: (lessonId: string) => request<Lesson>(`/courses/lessons/${lessonId}`),
 
-  // Courses — enrolled list (for dashboard)
-  getEnrolledCourses: () => request<EnrolledCourse[]>('/courses/my/enrolled'),
+  // Courses — bookmarks
+  toggleBookmark: (courseId: string) =>
+    request<{ action: 'added' | 'removed' }>(`/courses/${courseId}/bookmark`, { method: 'POST' }),
+  getBookmarks: () => request<CourseSummary[]>('/courses/my/bookmarks'),
 
-  // Notes
-  getCourseNotes: (courseId: string) => request<CourseNote[]>(`/courses/${courseId}/notes`),
+  // Courses — notes
   createNote: (courseId: string, data: { content: string; lessonId?: string }) =>
     request<CourseNote>(`/courses/${courseId}/notes`, { method: 'POST', body: JSON.stringify(data) }),
+  getCourseNotes: (courseId: string) =>
+    request<CourseNote[]>(`/courses/${courseId}/notes`),
   updateNote: (noteId: string, content: string) =>
     request<CourseNote>(`/courses/notes/${noteId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
   deleteNote: (noteId: string) =>
     request<void>(`/courses/notes/${noteId}`, { method: 'DELETE' }),
+
+  // Courses — quiz
+  getCourseQuiz: (courseId: string) => request<Quiz>(`/courses/${courseId}/quiz`),
+  submitQuiz: (quizId: string, answers: { questionId: string; selectedOptionId: string }[]) =>
+    request<QuizAttemptResult>(`/courses/quiz/${quizId}/attempt`, { method: 'POST', body: JSON.stringify({ answers }) }),
+
+  // User stats & enrolled courses
+  getUserStats: () => request<UserStats>('/courses/my/stats'),
+  getEnrolledCourses: () => request<EnrolledCourse[]>('/courses/my/enrolled'),
 };

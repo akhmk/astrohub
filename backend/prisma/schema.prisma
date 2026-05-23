@@ -45,7 +45,10 @@ model User {
   courses         Course[]
   enrollments     CourseEnrollment[]
   lessonProgress  LessonProgress[]
+  quizAttempts    QuizAttempt[]
+  bookmarks       CourseBookmark[]
   courseNotes     CourseNote[]
+  stats           UserStats?
 
   @@map("users")
 }
@@ -267,62 +270,85 @@ model ForumFavorite {
 }
 
 // ============================================
-// Courses & Learning
+// Courses & Learning (Enhanced)
 // ============================================
 
+enum LessonType {
+  TEXT
+  VIDEO
+  INTERACTIVE
+}
+
 model Course {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  imageURL    String?  @map("image_url")
-  authorId    String   @map("author_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String     @id @default(cuid())
+  title          String
+  subtitle       String?
+  description    String?
+  imageURL       String?    @map("image_url")
+  category       String?
+  level          Difficulty @default(BEGINNER)
+  estimatedHours Int?       @map("estimated_hours")
+  tags           String[]   @default([])
+  outcomes       String[]   @default([])
+  prerequisites  String[]   @default([])
+  isPublished    Boolean    @default(true) @map("is_published")
+  authorId       String     @map("author_id")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   // Relations
   author      User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  modules     CourseModule[]
   lessons     Lesson[]
   enrollments CourseEnrollment[]
+  quizzes     Quiz[]
+  bookmarks   CourseBookmark[]
   notes       CourseNote[]
 
+  @@index([category])
+  @@index([level])
+  @@index([isPublished, createdAt(sort: Desc)])
   @@map("courses")
 }
 
-model Lesson {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  videoURL  String?  @map("video_url")
-  duration  Int?
-  summary   String?
-  order     Int      @default(0)
-  courseId  String   @map("course_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model CourseModule {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int      @default(0)
+  courseId    String   @map("course_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, order])
+  @@map("course_modules")
+}
+
+model Lesson {
+  id         String     @id @default(cuid())
+  title      String
+  content    String?
+  videoURL   String?    @map("video_url")
+  duration   Int?       // minutes
+  summary    String?
+  lessonType LessonType @default(TEXT) @map("lesson_type")
+  order      Int        @default(0)
+  courseId   String     @map("course_id")
+  moduleId   String?    @map("module_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module   CourseModule? @relation(fields: [moduleId], references: [id])
   progress LessonProgress[]
   notes    CourseNote[]
 
+  @@index([courseId, order])
   @@map("lessons")
-}
-
-model CourseNote {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  courseId  String   @map("course_id")
-  lessonId  String?  @map("lesson_id")
-  content   String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-
-  @@index([userId, courseId])
-  @@map("course_notes")
 }
 
 model CourseEnrollment {
@@ -353,3 +379,113 @@ model LessonProgress {
   @@map("lesson_progress")
 }
 
+// ============================================
+// Quiz System
+// ============================================
+
+model Quiz {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  courseId     String   @map("course_id")
+  passingScore Int      @default(70) @map("passing_score")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course    Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  quizId      String   @map("quiz_id")
+  text        String
+  options     Json     // [{id: string, text: string, isCorrect: boolean}]
+  explanation String?
+  order       Int      @default(0)
+  points      Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, order])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  quizId      String   @map("quiz_id")
+  score       Int
+  maxScore    Int      @map("max_score")
+  passed      Boolean
+  answers     Json     // [{questionId: string, selectedOptionId: string, isCorrect: boolean}]
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId, quizId])
+  @@map("quiz_attempts")
+}
+
+// ============================================
+// Bookmarks & Notes
+// ============================================
+
+model CourseBookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("course_bookmarks")
+}
+
+model CourseNote {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  lessonId  String?  @map("lesson_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id])
+
+  @@index([userId, courseId])
+  @@map("course_notes")
+}
+
+// ============================================
+// User Stats & Gamification
+// ============================================
+
+model UserStats {
+  userId                String    @id @map("user_id")
+  xp                    Int       @default(0)
+  streak                Int       @default(0)
+  lastStudiedAt         DateTime? @map("last_studied_at")
+  totalLessonsCompleted Int       @default(0) @map("total_lessons_completed")
+  totalQuizzesPassed    Int       @default(0) @map("total_quizzes_passed")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
+}
