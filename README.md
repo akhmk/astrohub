@@ -1,4 +1,4 @@
-# 🚀 AstroHub
+#  AstroHub
 
 **AstroHub** is a platform for students who are interested in space, physics, and technology.
 It helps users discover clubs, resources, and opportunities in their city — from telescopes to makerspaces and rocketry.
